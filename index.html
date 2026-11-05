@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Interactive 3D map of the Brockway Park disc golf course in Rosemount, MN, with the current layout and the 2027–2028 improvement plan.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%233e6a48'/%3E%3Cpath d='M9 13h14l-2 5H11z' fill='%23f2f4ee'/%3E%3Cpath d='M16 6v18' stroke='%23f2f4ee' stroke-width='2'/%3E%3C/svg%3E">
+<style>body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}</style>
+<title>Brockway Course Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-height planning tool — 3D site view on the left, a field-book panel on the right; stacks on phones. */
+:root{
+  --paper:#f2f4ee; --panel:#fbfcf8; --ink:#1c2720; --muted:#5d6b61; --rule:#d5dccf;
+  --moss:#3e6a48; --signal:#d27a22; --tee-long:#2d5ea8; --tee-short:#c03f2c;
+  --ok:#3e7d4f; --warn:#b5731b; --scene:#e6eadf;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#111712; --panel:#171f19; --ink:#e2e8de; --muted:#93a196; --rule:#2c372f;
+  --moss:#79a884; --signal:#e8943f; --tee-long:#6f9be0; --tee-short:#e9735f;
+  --ok:#77b487; --warn:#e1a24f; --scene:#1a221c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#111712; --panel:#171f19; --ink:#e2e8de; --muted:#93a196; --rule:#2c372f;
+  --moss:#79a884; --signal:#e8943f; --tee-long:#6f9be0; --tee-short:#e9735f;
+  --ok:#77b487; --warn:#e1a24f; --scene:#1a221c; color-scheme:dark}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;min-height:0}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  border-bottom:1px solid var(--rule);background:var(--panel)}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:24px;letter-spacing:.02em;margin:0;text-transform:uppercase;text-wrap:balance}
+.brand span{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.hdr-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+select,input[type=text],input[type=number],textarea{background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:5px 8px}
+textarea{width:100%;min-height:84px;resize:vertical}
+input[type=number]{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{border:1px solid var(--rule);background:var(--panel);border-radius:4px;padding:5px 10px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--moss)}
+.btn.primary{background:var(--moss);border-color:var(--moss);color:var(--panel)}
+.btn.danger{color:var(--tee-short)}
+.btn[aria-pressed=true]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.laytabs{display:flex;gap:4px;flex-wrap:wrap}
+.laytabs button{border:1px solid var(--rule);background:var(--paper);border-radius:4px;padding:5px 12px;cursor:pointer;font-weight:600;display:inline-flex;gap:6px;align-items:center}
+.laytabs button[aria-current=true]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.laytabs .ro{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;opacity:.75}
+.locknote{border:1px solid var(--rule);background:var(--paper);border-radius:6px;padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+.locknote b{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.05em;font-size:14px}
+.readnote{white-space:pre-wrap;background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:8px 10px;font-size:13px;min-height:40px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;min-height:0}
+.stage{position:relative;min-height:0;background:var(--scene)}
+#view{position:absolute;inset:0;touch-action:none}
+.toolbar{position:absolute;top:10px;left:max(10px,env(safe-area-inset-left,0px));display:flex;flex-wrap:wrap;gap:6px;max-width:calc(100% - 20px)}
+.toolbar .grp{display:flex;background:var(--panel);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.toolbar .grp button{white-space:nowrap;border:0;border-right:1px solid var(--rule);background:transparent;padding:6px 10px;cursor:pointer;font-size:13px;font-weight:500}
+.toolbar .grp button:last-child{border-right:0}
+.toolbar .grp button:disabled{opacity:.4;cursor:default}
+.toolbar .grp button[aria-pressed=true]{background:var(--ink);color:var(--panel)}
+.legend{position:absolute;left:max(10px,env(safe-area-inset-left,0px));bottom:10px;background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:7px 10px;font-size:12px;display:flex;flex-wrap:wrap;gap:4px 14px;max-width:calc(100% - 20px)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.hint{position:absolute;right:10px;bottom:10px;background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--muted);max-width:280px}
+.status{position:absolute;right:10px;top:auto;bottom:56px;font-family:var(--f-mono);font-size:11.5px;background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:4px 8px}
+.status.bad{color:var(--warn)}
+@media (max-width:900px){.status{bottom:10px;left:10px;right:auto}}
+.toolbar .grp{flex-wrap:wrap}
+aside{border-left:1px solid var(--rule);background:var(--panel);display:grid;grid-template-rows:auto 1fr;min-height:0}
+.tabs{display:flex;border-bottom:1px solid var(--rule)}
+.tabs button{flex:1;border:0;background:transparent;padding:10px 4px;cursor:pointer;font-family:var(--f-display);font-size:16px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--signal)}
+.pane{overflow:auto;padding:14px 16px 24px;min-width:0}
+.pane h2{font-family:var(--f-display);font-size:20px;font-weight:600;margin:0 0 4px;text-transform:uppercase;letter-spacing:.03em}
+.pane h3{font-family:var(--f-display);font-size:15px;font-weight:600;margin:18px 0 6px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.sub{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+.field{display:grid;gap:4px;margin-bottom:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.row2 input,.row3 input,.field select{width:100%}
+.stepper{display:flex;gap:4px}
+.stepper input{flex:1;min-width:0}
+.stepper button{width:30px;padding:0}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--rule)}
+.chip .dot{width:8px;height:8px;border-radius:50%}
+.empty{border:1px dashed var(--rule);border-radius:6px;padding:14px;color:var(--muted);font-size:13px}
+.empty b{color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;padding:5px 4px;border-bottom:1px solid var(--rule)}
+td{padding:6px 4px;border-bottom:1px solid var(--rule);font-family:var(--f-mono);font-variant-numeric:tabular-nums;vertical-align:top}
+td.h{font-family:var(--f-display);font-size:17px;font-weight:700}
+tr.click{cursor:pointer}
+tr.click:hover td{background:color-mix(in srgb,var(--moss) 8%,transparent)}
+.delta{font-size:11px;color:var(--muted)}
+.delta.off{color:var(--warn)}
+.tbl-wrap{overflow-x:auto}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:13px}
+.change{border-left:3px solid var(--signal);padding:6px 10px;margin:0 0 8px;background:color-mix(in srgb,var(--signal) 6%,transparent);border-radius:0 4px 4px 0}
+.change .t{font-weight:600}
+.change .d{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.change .n{font-size:12.5px;margin-top:3px;white-space:pre-line}
+.change{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:start}
+.change>div{grid-column:1;min-width:0}
+.change .rv{grid-column:2;grid-row:1 / span 3;padding:3px 9px;font-size:12px}
+.change.clickable>div{cursor:pointer}
+.totals{display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:13px;margin-bottom:12px}
+.totals b{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+pre.summary{white-space:pre-wrap;font-family:var(--f-mono);font-size:12px;background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:10px;max-height:280px;overflow:auto}
+.inline{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.readonly-note{font-size:12.5px;color:var(--warn);margin-bottom:10px}
+.toast{position:absolute;left:50%;transform:translateX(-50%);bottom:52px;background:var(--ink);color:var(--panel);padding:6px 12px;border-radius:4px;font-size:13px;pointer-events:none}
+input[type=range]{width:100%;accent-color:var(--moss)}
+@media (max-width:1100px){ .main{grid-template-columns:minmax(0,1fr) 320px} }
+@media (max-width:900px){ .main{grid-template-columns:minmax(0,1fr) 280px} .legend{display:none} .tabs button{font-size:14px} }
+@media (max-width:640px){
+  .main{grid-template-columns:1fr;grid-template-rows:56vh auto}
+  aside{border-left:0;border-top:1px solid var(--rule)}
+  .hint{display:none}
+  .app{height:auto;min-height:100%}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+body.public #modeGrp,body.public #newPropBtn,body.public #delPropBtn,body.public .grp:has(#undoBtn),body.public #expBox,body.public .field:has(#gfile),body.public .row2:has(#g-cx),body.public .row2:has(#g-w){display:none!important}
+.pubfoot{font-size:11.5px;color:var(--muted)}
+.pubfoot a{color:inherit}
+</style>
+
+</head>
+<body class="public">
+<div class="app">
+  <header>
+    <div class="brand"><h1>Brockway Course Plan</h1><span>Brockway Park · Rosemount, MN · <span class="pubfoot">public view · <a href="https://github.com/amockenh/disc_golf" rel="noopener">about this map</a></span></span></div>
+    <div class="hdr-ctl">
+      <nav class="laytabs" id="layTabs" aria-label="Layouts"></nav>
+      <button class="btn" id="newPropBtn" type="button">New proposal</button>
+      <button class="btn danger" id="delPropBtn" type="button" hidden>Delete proposal</button>
+    </div>
+  </header>
+  <div class="main">
+    <div class="stage">
+      <canvas id="view" aria-label="3D view of the course"></canvas>
+      <div class="toolbar" role="toolbar" aria-label="Tools">
+        <div class="grp" id="modeGrp">
+          <button type="button" data-mode="select" aria-pressed="true">Select / move</button>
+          <button type="button" data-mode="tee-long" aria-pressed="false">+ Long tee</button>
+          <button type="button" data-mode="tee-short" aria-pressed="false">+ Short tee</button>
+          <button type="button" data-mode="basket" aria-pressed="false">+ Basket</button>
+          <button type="button" data-mode="grade" aria-pressed="false">+ Grade pt</button>
+          <button type="button" data-mode="tree" aria-pressed="false">+ Tree</button>
+        </div>
+        <div class="grp">
+          <button type="button" id="planBtn">Plan view</button>
+          <button type="button" id="persBtn">3D view</button>
+        </div>
+        <div class="grp">
+          <button type="button" id="undoBtn" title="Undo (Ctrl+Z)" disabled>Undo</button>
+          <button type="button" id="redoBtn" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
+        </div>
+      </div>
+      <div class="status" id="status">Connecting…</div>
+      <div class="legend">
+        <span><i style="background:var(--tee-long)"></i>Long (blue) tee</span>
+        <span><i style="background:var(--tee-short)"></i>Short (red) tee</span>
+        <span><i style="background:#e9e4d2;border:1px solid #888"></i>Basket</span>
+        <span><i style="background:#e3b23c"></i>Grade point</span>
+        <span><i style="background:#2f5b36"></i>Tree</span>
+      </div>
+      <div class="hint" id="hint">Drag to orbit · scroll to zoom · right-drag to pan. Click an item to read its notes.</div>
+      <div class="toast" id="toast" hidden></div>
+    </div>
+    <aside>
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="inspect" id="tab-inspect">Inspect</button>
+        <button role="tab" aria-selected="false" data-tab="holes" id="tab-holes">Holes</button>
+        <button role="tab" aria-selected="false" data-tab="changes" id="tab-changes">Changes</button>
+        <button role="tab" aria-selected="false" data-tab="site" id="tab-site">Site</button>
+      </div>
+      <div class="pane" id="pane"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  // Read-only stand-in for the planner's data store, fed from data/course.json.
+  const ready=fetch("data/course.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
+  const ro=()=>Promise.reject({code:"invalid_argument",message:"This public copy is view-only."});
+  const snapDoc=(id,d)=>({id,exists:!!d,data:()=>d,metadata:{fromCache:false,hasPendingWrites:false}});
+  const snapQ=docs=>({docs,size:docs.length,empty:!docs.length,metadata:{fromCache:false,hasPendingWrites:false},docChanges:()=>[]});
+  const order={layouts:0,features:1,settings:2}; const queue=[];
+  function deliver(fn,k){ queue.push([order[k]??3,fn]); }
+  ready.then(data=>{
+    const dt=new Date(data.exportedAt); window.__PUBLIC_DEFAULT=data.defaultLayout;
+    window.__PUBLIC_DATE=isNaN(dt)?"":dt.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+    window.__COURSE=data;
+    setTimeout(()=>{ queue.sort((a,b)=>a[0]-b[0]).forEach(([,fn])=>fn(data)); queue.length=0; },0);
+  }).catch(()=>{ const st=document.getElementById("status"); if(st){ st.textContent="Couldn't load the course data"; st.classList.add("bad"); } });
+  function collection(name){ return {
+    onSnapshot(next){ deliver(data=>{
+      if(name==="features") next(snapQ(data.features.map(f=>snapDoc(f.layout+"__"+f.key,f))));
+      else if(name==="layouts") next(snapQ(Object.entries(data.layouts).map(([id,v])=>snapDoc(id,v))));
+      else next(snapQ([]));
+    },name); return ()=>{}; },
+    doc(id){ return { set:ro, update:ro, delete:ro, get:()=>ready.then(d=>snapDoc(id,name==="settings"&&id==="ground"?d.ground:undefined)),
+      onSnapshot(next){ deliver(d=>next(snapDoc(id,name==="settings"&&id==="ground"?d.ground:undefined)),name); return ()=>{}; } }; }
+  }; }
+  const db={collection,doc:p=>{const [c,id]=p.split("/");return collection(c).doc(id);}};
+  const user={can:async()=>false,canEdit:async()=>false,isOwner:async()=>false};
+  window.claude={use:async n=>n==="db"?db:n==="user"?user:null};
+})();
+</script>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script>
+(function(){
+"use strict";
+// ---------- reference data (UDisc Blue/Red layouts) ----------
+const REF={1:{L:341,S:199,pL:3,pS:3},2:{L:414,S:null,pL:4,pS:3},3:{L:247,S:225,pL:3,pS:3},4:{L:214,S:null,pL:3,pS:3},
+5:{L:250,S:149,pL:3,pS:3},6:{L:406,S:null,pL:4,pS:3},7:{L:641,S:416,pL:4,pS:4},8:{L:189,S:null,pL:3,pS:3},9:{L:254,S:230,pL:3,pS:3}};
+const KIND={ "tee-long":{name:"Long tee",col:"--tee-long"}, "tee-short":{name:"Short tee",col:"--tee-short"},
+  basket:{name:"Basket",col:null}, grade:{name:"Grade point",col:null}, tree:{name:"Tree",col:null} };
+
+// ---------- state ----------
+const S={ db:null, user:null, canWrite:true, layouts:{baseline:{name:"Baseline (current course)"}}, layout:"baseline",
+  feats:{}, sel:null, mode:"select", tab:"inspect", exag:3, markerScale:3, contour:2, ground:null, loaded:false,
+  confirmDel:false, newProp:false };
+try{ const t=localStorage.getItem("bw-tab"); if(t) S.tab=t; const l=localStorage.getItem("bw-layout"); if(l) S.layout=l; }catch(e){}
+
+const $=s=>document.querySelector(s);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt=(n,d=0)=>(Math.round(n*10**d)/10**d).toFixed(d);
+const sgn=(n,d=1)=>(n>0?"+":n<0?"−":"±")+fmt(Math.abs(n),d);
+function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,1800)}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+const UNLOCK={};
+function lockable(l){ l=l||S.layout; return !!(S.layouts[l]&&S.layouts[l].locked); }
+function locked(l){ l=l||S.layout; return lockable(l)&&!UNLOCK[l]; }
+function setUnlock(on){ if(on) UNLOCK[S.layout]=true; else delete UNLOCK[S.layout]; if(!on) S.confirmDel=false;
+  renderLayoutSel(); syncUndoBtns(); buildMarkers(); renderPane(); toast(on?"Editing the current course":"Current course is read-only again"); }
+function editable(){ return S.canWrite&&!!S.db&&!locked(); }
+function baseOf(l){ l=l||S.layout; if(lockable(l)) return null; const b=S.layouts[l]&&S.layouts[l].basedOn; return b&&b!==l&&S.layouts[b]?b:null; }
+function layoutFeats(lay){return Object.values(S.feats).filter(f=>f.layout===lay)}
+function cur(){return layoutFeats(S.layout)}
+function docId(lay,key){return lay+"__"+key}
+
+// ---------- write queue: one write at a time per doc, coalesced ----------
+const pend={},busy={};
+function save(f){ if(!S.db||!S.canWrite||locked(f.layout)) return; const id=docId(f.layout,f.key); pend[id]={...f}; pump(id); }
+async function pump(id){
+  if(busy[id]||!pend[id]) return; busy[id]=true;
+  const data=pend[id]; delete pend[id];
+  try{ await S.db.collection("features").doc(id).set(data); }
+  catch(e){ onWriteErr(e); }
+  busy[id]=false; pump(id);
+}
+async function del(f){ if(!S.db||!S.canWrite||locked(f.layout)) return; try{ await S.db.collection("features").doc(docId(f.layout,f.key)).delete(); }catch(e){onWriteErr(e)} }
+function onWriteErr(e){
+  if(e&&e.code==="invalid_argument"){S.canWrite=false; renderPane(); toast("You can view this plan but not edit it.");}
+  else if(e&&e.code==="quota_exceeded") toast("The plan's storage is full. Delete unused proposals first.");
+  else toast("Couldn't save that change. Try again in a moment.");
+}
+let saveTimers={};
+function saveSoon(f){clearTimeout(saveTimers[f.key]);saveTimers[f.key]=setTimeout(()=>save(f),500)}
+
+// ---------- three.js scene ----------
+const canvas=$("#view");
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,1,2,20000);
+camera.up.set(0,1,0);
+const controls=new THREE.OrbitControls(camera,canvas);
+controls.enableDamping=true; controls.maxPolarAngle=Math.PI*0.49;
+scene.add(new THREE.HemisphereLight(0xffffff,0x6b7a5c,0.85));
+const sun=new THREE.DirectionalLight(0xffffff,0.55); sun.position.set(-400,800,300); scene.add(sun);
+
+// world: X = east ft, Z = -north ft, Y = (elev - base) * exag
+let BASE=946;
+const W=(x,y,z)=>new THREE.Vector3(x,(z-BASE)*S.exag,-y);
+
+// terrain
+const TER={mesh:null,geo:null,ext:null,N:110};
+const terMat=new THREE.ShaderMaterial({
+  extensions:{derivatives:true},
+  uniforms:{uMin:{value:940},uMax:{value:955},uInt:{value:2},uLight:{value:new THREE.Vector3(-0.4,0.8,0.3).normalize()},
+    uTex:{value:null},uHasTex:{value:0},uOpac:{value:0.85},uTexC:{value:new THREE.Vector2()},uTexS:{value:new THREE.Vector2(1,1)},uRot:{value:0},
+    uLine:{value:new THREE.Color(0x2c3a2e)}},
+  vertexShader:`attribute float elev; varying float vE; varying vec3 vN; varying vec2 vP;
+    void main(){ vE=elev; vN=normalize(normalMatrix*normal); vP=vec2(position.x,-position.z);
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+  fragmentShader:`uniform float uMin,uMax,uInt,uHasTex,uOpac,uRot; uniform vec3 uLight,uLine; uniform sampler2D uTex; uniform vec2 uTexC,uTexS;
+    varying float vE; varying vec3 vN; varying vec2 vP;
+    vec3 ramp(float t){ vec3 a=vec3(0.36,0.50,0.33), b=vec3(0.60,0.70,0.45), c=vec3(0.82,0.80,0.58);
+      return t<0.5? mix(a,b,t*2.0): mix(b,c,(t-0.5)*2.0); }
+    void main(){
+      float t=clamp((vE-uMin)/max(uMax-uMin,0.1),0.0,1.0);
+      vec3 col=ramp(t);
+      if(uHasTex>0.5){ vec2 d=vP-uTexC; float c=cos(-uRot), s=sin(-uRot); d=vec2(c*d.x-s*d.y, s*d.x+c*d.y);
+        vec2 uv=d/uTexS+0.5; if(uv.x>0.0&&uv.x<1.0&&uv.y>0.0&&uv.y<1.0){ col=mix(col,texture2D(uTex,uv).rgb,uOpac);} }
+      float l=0.55+0.45*max(dot(normalize(vN),uLight),0.0);
+      col*=l;
+      float e=vE/uInt; float w=fwidth(e); float f=abs(fract(e-0.5)-0.5)/max(w,1e-4);
+      float line=1.0-min(f,1.0);
+      float e5=vE/(uInt*5.0); float f5=abs(fract(e5-0.5)-0.5)/max(fwidth(e5),1e-4); float major=1.0-min(f5,1.0);
+      col=mix(col,uLine,max(line*0.35,major*0.6));
+      gl_FragColor=vec4(col,1.0);
+    }`
+});
+
+function controlPts(){ return cur().filter(f=>f.kind!=="tree").map(f=>[f.x,f.y,f.z]); }
+function elevAt(x,y,pts){
+  pts=pts||controlPts(); if(!pts.length) return BASE;
+  let sw=0,sz=0; for(const p of pts){const dx=x-p[0],dy=y-p[1];const d2=dx*dx+dy*dy;if(d2<0.01) return p[2];const w=1/(d2*d2/10000+d2*0.02+1);sw+=w;sz+=w*p[2];}
+  return sz/sw;
+}
+function extent(){
+  const fs=layoutFeats(baseOf()||S.layout).concat(cur());
+  let a=[Infinity,-Infinity,Infinity,-Infinity];
+  for(const f of fs){a[0]=Math.min(a[0],f.x);a[1]=Math.max(a[1],f.x);a[2]=Math.min(a[2],f.y);a[3]=Math.max(a[3],f.y);}
+  if(!isFinite(a[0])) a=[-300,300,-300,300];
+  const m=220; return [a[0]-m,a[1]+m,a[2]-m,a[3]+m];
+}
+function buildTerrain(){
+  const ext=extent(); const N=TER.N;
+  const same=TER.ext&&ext.every((v,i)=>Math.abs(v-TER.ext[i])<60);
+  if(!same){
+    if(TER.mesh){scene.remove(TER.mesh);TER.geo.dispose();}
+    const w=ext[1]-ext[0], h=ext[3]-ext[2];
+    const g=new THREE.PlaneGeometry(w,h,N,N); g.rotateX(-Math.PI/2); g.translate((ext[0]+ext[1])/2,0,-(ext[2]+ext[3])/2);
+    g.setAttribute("elev",new THREE.BufferAttribute(new Float32Array(g.attributes.position.count),1));
+    TER.geo=g; TER.mesh=new THREE.Mesh(g,terMat); TER.mesh.name="terrain"; scene.add(TER.mesh); TER.ext=ext;
+  }
+  const pts=controlPts(); const pos=TER.geo.attributes.position, el=TER.geo.attributes.elev;
+  let mn=Infinity,mx=-Infinity;
+  for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=-pos.getZ(i);const z=elevAt(x,y,pts);el.setX(i,z);pos.setY(i,(z-BASE)*S.exag);if(z<mn)mn=z;if(z>mx)mx=z;}
+  pos.needsUpdate=true; el.needsUpdate=true; TER.geo.computeVertexNormals(); TER.geo.computeBoundingSphere();
+  terMat.uniforms.uMin.value=mn; terMat.uniforms.uMax.value=mx; terMat.uniforms.uInt.value=S.contour;
+}
+
+// markers
+const markers=new THREE.Group(); scene.add(markers);
+const lines=new THREE.Group(); scene.add(lines);
+const labelCache={};
+function labelTex(txt,bg,fg){
+  const k=txt+bg+fg; if(labelCache[k]) return labelCache[k];
+  const F="700 40px 'Barlow Condensed', Arial Narrow, sans-serif";
+  const m=document.createElement("canvas").getContext("2d"); m.font=F; const w=Math.max(56,Math.ceil(m.measureText(txt).width)+26);
+  const CW=Math.max(128,w+8); const c=document.createElement("canvas"); c.width=CW;c.height=64; const x=c.getContext("2d"); x.font=F;
+  x.fillStyle=bg; const r=14,X=(CW-w)/2; x.beginPath(); x.moveTo(X+r,6);x.arcTo(X+w,6,X+w,58,r);x.arcTo(X+w,58,X,58,r);x.arcTo(X,58,X,6,r);x.arcTo(X,6,X+w,6,r);x.fill();
+  x.fillStyle=fg; x.textAlign="center"; x.textBaseline="middle"; x.fillText(txt,CW/2,34);
+  const t=new THREE.CanvasTexture(c); t.anisotropy=4; t.userData={aspect:CW/64}; labelCache[k]=t; return t;
+}
+function sprite(txt,bg,fg,h){ const tx=labelTex(txt,bg,fg); const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,depthTest:false,sizeAttenuation:false}));
+  s.scale.set(0.03*((tx.userData&&tx.userData.aspect)||2),0.03,1); s.renderOrder=10; s.userData.lh=h; return s; }
+const mats={};
+function mat(c){ if(!mats[c]) mats[c]=new THREE.MeshLambertMaterial({color:c}); return mats[c]; }
+const selMat=new THREE.MeshBasicMaterial({color:0xd27a22,transparent:true,opacity:.9,side:THREE.DoubleSide});
+
+function holeTarget(hole){ return cur().find(f=>f.kind==="basket"&&f.hole===hole); }
+
+function buildMarkers(){
+  const disp=o=>o.traverse(c=>{ if(c.geometry) c.geometry.dispose(); if(c.isSprite||c.isLine) c.material.dispose(); });
+  disp(markers); disp(lines); markers.clear(); lines.clear();
+  const k=S.markerScale; const fs=cur(); const pts=controlPts();
+  const lc=css("--tee-long")||"#2d5ea8", sc=css("--tee-short")||"#c03f2c";
+  for(const f of fs){
+    const g=new THREE.Group(); g.userData.key=f.key; const p=W(f.x,f.y,f.z); g.position.copy(p);
+    let top=6*k;
+    if(f.kind==="tee-long"||f.kind==="tee-short"){
+      const pad=new THREE.Mesh(new THREE.BoxGeometry(6*k*0.8,1.2,14*k*0.8),mat(f.kind==="tee-long"?lc:sc));
+      pad.position.y=0.6; g.add(pad);
+      const b=holeTarget(f.hole); if(b){ g.rotation.y=Math.atan2(b.x-f.x,b.y-f.y)*-1+Math.PI; }
+      g.add(sprite(String(f.hole??"?")+(f.kind==="tee-long"?"L":"S"),f.kind==="tee-long"?lc:sc,"#fff",top));
+      top=4*k;
+    } else if(f.kind==="basket"){
+      const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.25*k,0.25*k,5*k,8),mat("#8b8f8c")); pole.position.y=2.5*k; g.add(pole);
+      const bowl=new THREE.Mesh(new THREE.CylinderGeometry(1.1*k,0.9*k,0.9*k,16),mat("#e9e4d2")); bowl.position.y=2.2*k; g.add(bowl);
+      const band=new THREE.Mesh(new THREE.CylinderGeometry(1.15*k,1.15*k,0.35*k,16),mat("#e3b23c")); band.position.y=4.9*k; g.add(band);
+      top=7*k; g.add(sprite("#"+(f.hole??"?"),"#1c2720","#f2f4ee",top));
+    } else if(f.kind==="grade"){
+      const c=new THREE.Mesh(new THREE.ConeGeometry(1.2*k,3*k,10),mat("#e3b23c")); c.position.y=1.5*k; c.rotation.x=Math.PI; c.position.y=1.5*k; g.add(c);
+      top=3.5*k; g.add(sprite(f.label?f.label.slice(0,14):fmt(f.z,1)+"′","#e3b23c","#1c2720",top));
+    } else if(f.kind==="tree"){
+      const r=(f.r||15);
+      const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.8,1.1,10,8),mat("#6b4f35")); tr.position.y=5; g.add(tr);
+      const cr=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),mat("#2f5b36")); cr.scale.y=0.8; cr.position.y=10+r*0.7; g.add(cr);
+      top=10+r*1.5;
+    }
+    // hit target
+    const hit=new THREE.Mesh(new THREE.CylinderGeometry(Math.max(5*k,f.kind==="tree"?(f.r||15):0),Math.max(5*k,f.kind==="tree"?(f.r||15):0),top,10),new THREE.MeshBasicMaterial({visible:false}));
+    hit.position.y=top/2; hit.userData.key=f.key; g.add(hit); g.userData.hit=hit;
+    if(S.sel===f.key){ const ring=new THREE.Mesh(new THREE.RingGeometry(7*k,8.5*k,40),selMat); ring.rotation.x=-Math.PI/2; ring.position.y=0.8; g.add(ring); }
+    g.children.forEach(ch=>{ if(ch.isSprite) ch.position.y=ch.userData.lh+2; });
+    if(f.kind.startsWith("tee")) g.children.forEach(ch=>{ if(ch.isSprite){ /* keep label upright regardless of rotation */ } });
+    markers.add(g);
+  }
+  // fairway lines: tee -> basket, draped
+  for(const f of fs){
+    if(!f.kind.startsWith("tee")) continue; const b=holeTarget(f.hole); if(!b) continue;
+    const arr=[]; const n=40; for(let i=0;i<=n;i++){const t=i/n;const x=f.x+(b.x-f.x)*t,y=f.y+(b.y-f.y)*t;const z=elevAt(x,y,pts);const v=W(x,y,z);v.y+=1.5;arr.push(v);}
+    const geo=new THREE.BufferGeometry().setFromPoints(arr);
+    const l=new THREE.Line(geo,new THREE.LineDashedMaterial({color:f.kind==="tee-long"?lc:sc,dashSize:8,gapSize:6,depthTest:true}));
+    l.computeLineDistances(); lines.add(l);
+  }
+}
+function rebuild(){ buildTerrain(); buildMarkers(); }
+
+// sizing
+function resize(){ const r=canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(r.height,1); camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(canvas.parentElement);
+function themeBg(){ renderer.setClearColor(new THREE.Color(css("--scene")||"#e6eadf")); terMat.uniforms.uLine.value.set(document.documentElement.matches("[data-theme=dark]")||(matchMedia("(prefers-color-scheme: dark)").matches&&!document.documentElement.matches("[data-theme=light]"))?0x0f1410:0x2c3a2e); }
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{themeBg();buildMarkers();});
+new MutationObserver(()=>{themeBg();buildMarkers();}).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+function frame(view){
+  const e=extent(); const cx=(e[0]+e[1])/2, cy=(e[2]+e[3])/2; const span=Math.max(e[1]-e[0],e[3]-e[2]);
+  controls.target.set(cx,0,-cy);
+  if(view==="plan"){ camera.position.set(cx,span*1.15,-cy+0.01); }
+  else { camera.position.set(cx-span*0.15,span*0.55,-cy+span*0.75); }
+  controls.update();
+}
+function focusOn(x,y){ const t=new THREE.Vector3(x,0,-y); const d=camera.position.clone().sub(controls.target); controls.target.copy(t); camera.position.copy(t.clone().add(d.setLength(Math.min(d.length(),600)))); controls.update(); }
+(function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene,camera); })();
+
+// ---------- undo / redo (per layout, this browser session) ----------
+const HIST={}; // layout -> {u:[],r:[]}
+const clone=o=>o?JSON.parse(JSON.stringify(o)):null;
+function hist(l){ l=l||S.layout; return HIST[l]||(HIST[l]={u:[],r:[]}); }
+function pushHist(layout,key,before,after,what,field){
+  if(JSON.stringify(before)===JSON.stringify(after)) return;
+  const h=hist(layout), top=h.u[h.u.length-1], now=Date.now();
+  if(field&&top&&top.key===key&&top.field===field&&now-top.t<2000){ top.after=clone(after); top.t=now; }
+  else { h.u.push({key,before:clone(before),after:clone(after),what,field,t:now}); if(h.u.length>200) h.u.shift(); }
+  h.r=[]; syncUndoBtns();
+}
+function applyHist(e,state){
+  const id=docId(S.layout,e.key); clearTimeout(saveTimers[e.key]);
+  if(state){ S.feats[id]=clone(state); save(S.feats[id]); }
+  else { const f=S.feats[id]; delete S.feats[id]; if(f) del(f); }
+  S.sel=state?e.key:null; S.confirmDel=false; rebuild(); renderPane();
+}
+function undo(){ if(!editable()) return; const h=hist(), e=h.u.pop(); if(!e) return; applyHist(e,e.before); h.r.push(e); syncUndoBtns(); toast("Undid "+e.what); }
+function redo(){ if(!editable()) return; const h=hist(), e=h.r.pop(); if(!e) return; applyHist(e,e.after); h.u.push(e); syncUndoBtns(); toast("Redid "+e.what); }
+function syncUndoBtns(){ const h=hist(), ok=editable(); const u=$("#undoBtn"), r=$("#redoBtn"); if(!u) return;
+  u.disabled=!ok||!h.u.length; r.disabled=!ok||!h.r.length;
+  u.title=h.u.length?"Undo "+h.u[h.u.length-1].what+" (Ctrl+Z)":"Undo (Ctrl+Z)"; r.title=h.r.length?"Redo "+h.r[h.r.length-1].what+" (Ctrl+Shift+Z)":"Redo (Ctrl+Shift+Z)";
+  const grp=u.parentElement; grp.hidden=locked(); }
+$("#undoBtn").onclick=undo; $("#redoBtn").onclick=redo;
+document.addEventListener("keydown",ev=>{
+  if(!(ev.ctrlKey||ev.metaKey)||ev.altKey) return;
+  const k=ev.key.toLowerCase(); if(k!=="z"&&k!=="y") return;
+  const a=document.activeElement; if(a&&(a.tagName==="TEXTAREA"||(a.tagName==="INPUT"&&/^(text|number|search)$/.test(a.type)))) return; // let fields undo their own typing
+  ev.preventDefault(); if(k==="y"||ev.shiftKey) redo(); else undo();
+});
+
+// ---------- picking / dragging / adding ----------
+const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+let drag=null;
+function setNdc(ev){const r=canvas.getBoundingClientRect(); ndc.set(((ev.clientX-r.left)/r.width)*2-1,-((ev.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ndc,camera);}
+function pickMarker(){ const hits=markers.children.map(g=>g.userData.hit).filter(Boolean); const h=ray.intersectObjects(hits,false)[0]; return h?h.object.userData.key:null; }
+canvas.addEventListener("pointerdown",ev=>{
+  if(ev.button!==0) return; setNdc(ev);
+  const key=pickMarker();
+  if(S.mode==="select"&&key){
+    controls.enabled=false; const f=findKey(key);
+    drag={key,start:[ev.clientX,ev.clientY],moved:false,plane:new THREE.Plane(new THREE.Vector3(0,1,0),-(f.z-BASE)*S.exag),orig:{x:f.x,y:f.y},before:clone(f)};
+    canvas.setPointerCapture(ev.pointerId);
+    select(key);
+  } else { drag={key:null,start:[ev.clientX,ev.clientY],moved:false}; }
+});
+canvas.addEventListener("pointermove",ev=>{
+  if(!drag) return;
+  if(Math.hypot(ev.clientX-drag.start[0],ev.clientY-drag.start[1])>4) drag.moved=true;
+  if(drag.key&&drag.moved&&editable()){
+    setNdc(ev); const p=new THREE.Vector3(); if(ray.ray.intersectPlane(drag.plane,p)){
+      const f=findKey(drag.key); f.x=Math.round(p.x*2)/2; f.y=Math.round(-p.z*2)/2;
+      if(!rebuild._q){rebuild._q=true;requestAnimationFrame(()=>{rebuild._q=false;rebuild();renderPaneLive();});}
+    }
+  }
+});
+canvas.addEventListener("pointerup",ev=>{
+  const d=drag; drag=null; controls.enabled=true; if(!d) return;
+  if(d.key&&d.moved&&editable()){ const f=findKey(d.key); save(f); pushHist(S.layout,f.key,d.before,f,"move of "+describe(f)); toast("Moved "+describe(f)); renderPane(); return; }
+  if(!d.moved){
+    setNdc(ev);
+    if(S.mode!=="select"){ addAt(); return; }
+    if(!d.key){ const k=pickMarker(); if(!k){ select(null);} }
+  }
+});
+function addAt(){
+  if(!editable()){toast(locked()?"Current course is a read-only snapshot. Switch to Improvements to make changes.":"Editing isn't available for you on this plan.");return;}
+  const h=ray.intersectObject(TER.mesh,false)[0]; if(!h) return;
+  const x=Math.round(h.point.x), y=Math.round(-h.point.z); const z=Math.round(elevAt(x,y)*10)/10;
+  const key="f-"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  let hole=null; if(S.mode!=="grade"&&S.mode!=="tree"){ const sf=findKey(S.sel); hole=sf&&sf.hole?sf.hole:nextHole(); }
+  const f={layout:S.layout,key,kind:S.mode,hole,x,y,z,note:"",label:""}; if(S.mode==="tree") f.r=15;
+  S.feats[docId(S.layout,key)]=f; save(f); pushHist(S.layout,key,null,f,"adding "+describe(f)); select(key); setMode("select"); rebuild(); toast("Added "+describe(f));
+}
+function nextHole(){ const hs=cur().map(f=>f.hole||0); return Math.max(0,...hs)+1; }
+function findKey(key){ return S.feats[docId(S.layout,key)]; }
+function describe(f){ if(!f) return ""; const k=KIND[f.kind]?.name||f.kind; return (f.hole?("hole "+f.hole+" "):"")+k.toLowerCase(); }
+function select(key){ S.sel=key; S.confirmDel=false; if(key&&S.tab!=="inspect") setTab("inspect"); else renderPane(); buildMarkers();
+  if(key&&matchMedia("(max-width:640px)").matches){ const a=document.querySelector("aside"); try{ a.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"}); }catch(e){} } }
+function setMode(m){ if(locked()&&m!=="select") m="select"; S.mode=m; document.querySelectorAll("#modeGrp button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m)));
+  $("#hint").textContent= m==="select" ? "Drag to orbit · scroll to zoom · right-drag to pan. Click an item to read its notes." : "Click the ground to place a "+KIND[m].name.toLowerCase()+". It joins the selected hole, or the next new hole.";
+}
+document.querySelectorAll("#modeGrp button").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
+$("#planBtn").onclick=()=>frame("plan"); $("#persBtn").onclick=()=>frame("pers");
+
+// ---------- hole math ----------
+function holeStats(lay){
+  const fs=layoutFeats(lay); const holes={};
+  for(const f of fs){ if(!f.hole) continue; (holes[f.hole]=holes[f.hole]||{}); if(f.kind==="basket") holes[f.hole].b=f; if(f.kind==="tee-long") holes[f.hole].L=f; if(f.kind==="tee-short") holes[f.hole].S=f; }
+  const out=[]; for(const h of Object.keys(holes).map(Number).sort((a,b)=>a-b)){
+    const o={hole:h,...holes[h]};
+    for(const t of ["L","S"]){ if(o[t]&&o.b){ o[t+"d"]=Math.hypot(o.b.x-o[t].x,o.b.y-o[t].y); o[t+"e"]=o.b.z-o[t].z; } }
+    out.push(o);
+  } return out;
+}
+
+// ---------- panel ----------
+function setTab(t){ S.tab=t; try{localStorage.setItem("bw-tab",t)}catch(e){} document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===t))); renderPane(); }
+document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+
+function renderPane(){
+  const p=$("#pane");
+  const L=S.layouts[S.layout]||{};
+  const canUnlock=S.canWrite&&!!S.db;
+  const ro= locked() ? `<div class="locknote"><b>Read-only</b><br>The course as it stands${L.snapshotAt?", recorded "+new Date(L.snapshotAt).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):""}. Open a proposal tab to see planned changes.${canUnlock?`<div class="inline" style="margin-top:8px"><button class="btn" type="button" id="unlockBtn">Edit current course</button><span class="delta">Use this to correct the record when the real course changes.</span></div>`:""}</div>`
+    : lockable() ? `<div class="locknote" style="border-color:var(--signal)"><b style="color:var(--signal)">Editing the current course</b><br>Changes here update the record that Improvements and every proposal compare against.<div class="inline" style="margin-top:8px"><button class="btn primary" type="button" id="relockBtn">Done editing</button></div></div>`
+    : (!S.canWrite||!S.db ? `<div class="readonly-note">${S.db?"This is a public, view-only copy of the Brockway course plan."+(window.__PUBLIC_DATE?" Last updated "+window.__PUBLIC_DATE+".":""):"The course data didn't load. Refresh the page to try again."}</div>`:"");
+  if(S.tab==="inspect") p.innerHTML=ro+inspectHTML();
+  else if(S.tab==="holes") p.innerHTML=(lockable()?ro:"")+holesHTML();
+  else if(S.tab==="changes") p.innerHTML=changesHTML();
+  else p.innerHTML=ro+siteHTML();
+  bindPane();
+}
+function renderPaneLive(){ // light refresh during drag
+  if(S.tab!=="inspect") return; const f=findKey(S.sel); if(!f) return;
+  const ex=$("#f-x"), ey=$("#f-y"); if(ex) ex.value=f.x; if(ey) ey.value=f.y; const dd=$("#f-dist"); if(dd) dd.textContent=distLine(f);
+}
+function distLine(f){
+  if(!f.hole) return "";
+  const hs=holeStats(S.layout).find(h=>h.hole===f.hole); if(!hs) return "";
+  const parts=[]; if(hs.Ld!=null) parts.push("Long "+fmt(hs.Ld)+" ft ("+sgn(hs.Le)+" ft)"); if(hs.Sd!=null) parts.push("Short "+fmt(hs.Sd)+" ft ("+sgn(hs.Se)+" ft)");
+  return parts.join(" · ")||"No basket on this hole yet";
+}
+function inspectHTML(){
+  const f=findKey(S.sel);
+  if(!f) return `<h2>Inspect</h2><p class="sub">Click a tee pad, basket or marker on the map to read its details.</p>
+    <div class="empty"><b>${cur().length} features</b> in ${esc(layName(S.layout))}. Positions are in feet east and north of the center of the aerial image; elevations are feet above sea level.<br><br>
+    Positions were traced from the course sign over an aerial photo, with each tee set to UDisc's listed length. Positions and elevations are approximate.</div>`;
+  const bl=baseOf(); const base= bl&&!locked() ? S.feats[docId(bl,f.key)] : null;
+  const col=KIND[f.kind]?.col; const dot=col?`var(${col})`:(f.kind==="basket"?"#e9e4d2":f.kind==="grade"?"#e3b23c":"#2f5b36");
+  const dis=editable()?"":"disabled";
+  return `<div class="inline" style="justify-content:space-between"><h2>${esc(describe(f).replace(/^./,c=>c.toUpperCase()))}</h2><span class="chip"><span class="dot" style="background:${dot}"></span>${esc(KIND[f.kind]?.name||f.kind)}</span></div>
+  <p class="sub" id="f-dist">${esc(distLine(f))}</p>
+  ${base?`<p class="sub">${esc(layName(bl))}: ${fmt(base.x)} E, ${fmt(base.y)} N, ${fmt(base.z,1)} ft${moveText(base,f)}</p>`:""}
+  <div class="row2">
+    <div class="field"><label class="lbl" for="f-kind">Type</label><select id="f-kind" ${dis}>${Object.keys(KIND).map(k=>`<option value="${k}" ${k===f.kind?"selected":""}>${KIND[k].name}</option>`).join("")}</select></div>
+    <div class="field"><label class="lbl" for="f-hole">Hole</label><input id="f-hole" type="number" min="1" max="30" step="1" value="${f.hole??""}" ${dis}></div>
+  </div>
+  <div class="row3">
+    <div class="field"><label class="lbl" for="f-x">East (ft)</label><input id="f-x" type="number" step="1" value="${f.x}" ${dis}></div>
+    <div class="field"><label class="lbl" for="f-y">North (ft)</label><input id="f-y" type="number" step="1" value="${f.y}" ${dis}></div>
+    ${f.kind==="tree"?`<div class="field"><label class="lbl" for="f-r">Canopy r (ft)</label><input id="f-r" type="number" step="1" min="3" value="${f.r||15}" ${dis}></div>`:"<div></div>"}
+  </div>
+  ${f.kind!=="tree"?`<div class="field"><label class="lbl" for="f-z">Elevation (ft above sea level)</label>
+    <div class="stepper"><button class="btn" type="button" id="zdn" ${dis} aria-label="Lower 0.5 ft">−</button><input id="f-z" type="number" step="0.1" value="${f.z}" ${dis}><button class="btn" type="button" id="zup" ${dis} aria-label="Raise 0.5 ft">+</button></div></div>`:""}
+  <div class="field"><label class="lbl" for="f-label">Label</label><input id="f-label" type="text" value="${esc(f.label)}" placeholder="e.g. Concrete pad, 5×12" ${dis}></div>
+  ${dis&&locked()?`<div class="field"><span class="lbl">Notes</span><div class="readnote">${esc(f.note)||"<span style='color:var(--muted)'>No notes</span>"}</div></div>`:
+  `<div class="field"><label class="lbl" for="f-note">Notes${f.noteAt?` <span style="text-transform:none;letter-spacing:0;font-weight:400">· edited ${esc(when(f.noteAt))}</span>`:""}</label><textarea id="f-note" placeholder="${base?"Describe the change: what, why, and any work involved":"What's here, what should change, and why"}" ${dis}>${esc(f.note)}</textarea></div>`}
+  ${base&&base.note&&S.layouts[S.layout].clearedNotes?`<details><summary class="sub" style="cursor:pointer">Note from ${esc(layName(bl))}</summary><div class="readnote">${esc(base.note)}</div></details>`:""}
+  <div class="inline"><button class="btn" type="button" id="focusBtn">Center view</button>${dis?"":`<button class="btn danger" type="button" id="delBtn">Delete</button>`}</div>
+  ${S.confirmDel?`<div class="confirm">Delete this ${esc(describe(f))} from ${esc(layName(S.layout))}? <button class="btn danger" id="delYes" type="button">Delete</button><button class="btn" id="delNo" type="button">Keep it</button></div>`:""}`;
+}
+function when(iso){ try{ return new Date(iso).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}); }catch(e){ return ""; } }
+function moveText(a,b){ const d=Math.hypot(b.x-a.x,b.y-a.y), dz=b.z-a.z; const p=[]; if(d>=0.5) p.push("moved "+fmt(d)+" ft "+bearing(a,b)); if(Math.abs(dz)>=0.05) p.push("elevation "+sgn(dz)+" ft"); return p.length?" — "+p.join(", "):" — unchanged"; }
+function bearing(a,b){ const ang=(Math.atan2(b.x-a.x,b.y-a.y)*180/Math.PI+360)%360; return ["N","NE","E","SE","S","SW","W","NW"][Math.round(ang/45)%8]; }
+function layName(l){ return S.layouts[l]?.name||l; }
+
+function holesHTML(){
+  const hs=holeStats(S.layout);
+  if(!hs.length) return `<h2>Holes</h2><div class="empty">No holes in this layout yet. Choose <b>+ Basket</b> and click the ground to start one.</div>`;
+  const row=h=>{ const r=REF[h.hole]||{};
+    const cell=(t)=>{ const d=h[t+"d"]; if(d==null) return "—"; const ref=r[t]; const off=ref!=null?d-ref:null;
+      return fmt(d)+`<div class="delta ${off!=null&&Math.abs(off)>15?"off":""}">${ref!=null?("UDisc "+ref+(Math.abs(off)>=1?" · "+sgn(off,0):"")):"UDisc n/a"}</div>`; };
+    return `<tr class="click" data-hole="${h.hole}"><td class="h">${h.hole}</td><td>${cell("L")}</td><td>${h.Le!=null?sgn(h.Le):"—"}</td><td>${cell("S")}</td><td>${h.Se!=null?sgn(h.Se):"—"}</td><td>${r.pL!=null?r.pL+"/"+r.pS:"—"}</td></tr>`; };
+  const tL=hs.reduce((a,h)=>a+(h.Ld||0),0), tS=hs.reduce((a,h)=>a+(h.Sd||0),0);
+  return `<h2>Holes</h2><p class="sub">Horizontal tee-to-basket distance in feet, with elevation change (basket minus tee). Orange means more than 15 ft off UDisc's listed length.</p>
+  <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Long</th><th>Δ elev</th><th>Short</th><th>Δ elev</th><th>Par L/S</th></tr></thead><tbody>${hs.map(row).join("")}</tbody>
+  <tfoot><tr><td></td><td><b>${fmt(tL)}</b><div class="delta">UDisc 2956</div></td><td></td><td><b>${fmt(tS)}</b><div class="delta">UDisc 1979</div></td><td></td><td></td></tr></tfoot></table></div>
+  <p class="sub" style="margin-top:12px">UDisc lists short tees for holes 2, 4, 6 and 8 only as a combined 759 ft, so those rows show no reference.</p>`;
+}
+
+function diff(){
+  const bl=baseOf(); if(!bl||locked()) return null; const cleared=!!S.layouts[S.layout].clearedNotes;
+  const A={},B={}; layoutFeats(bl).forEach(f=>A[f.key]=f); cur().forEach(f=>B[f.key]=f);
+  const ch=[];
+  for(const k in B){ const b=B[k], a=A[k];
+    if(!a){ ch.push({type:"added",f:b}); continue; }
+    const d=Math.hypot(b.x-a.x,b.y-a.y), dz=b.z-a.z, kind=a.kind!==b.kind, hole=a.hole!==b.hole, note=(b.note||"")!==(cleared?"":(a.note||""));
+    if(d>=0.5||Math.abs(dz)>=0.05||kind||hole||note||(a.r||0)!==(b.r||0)) ch.push({type:"changed",f:b,a,d,dz,kind,hole,note});
+  }
+  for(const k in A) if(!B[k]) ch.push({type:"removed",f:A[k]});
+  ch.sort((x,y)=>(x.f.hole||99)-(y.f.hole||99));
+  return ch;
+}
+function changeLine(c){
+  const f=c.f; const lab=f.label?" — "+f.label:""; const name=describe(f).replace(/^./,s=>s.toUpperCase())+lab;
+  if(c.type==="added") return {t:"New "+describe(f)+lab,d:`at ${fmt(f.x)} E, ${fmt(f.y)} N, ${fmt(f.z,1)} ft`};
+  if(c.type==="removed") return {t:"Remove "+describe(f),d:`was at ${fmt(f.x)} E, ${fmt(f.y)} N`};
+  const p=[]; if(c.d>=0.5) p.push(`move ${fmt(c.d)} ft ${bearing(c.a,f)}`); if(Math.abs(c.dz)>=0.05) p.push(`${c.dz>0?"raise":"lower"} grade ${fmt(Math.abs(c.dz),1)} ft`);
+  if(c.kind) p.push(`change from ${KIND[c.a.kind].name.toLowerCase()}`); if(c.hole) p.push(`renumber from hole ${c.a.hole}`); if(c.note&&!p.length) p.push("note added"+(f.noteAt?" "+when(f.noteAt):""));
+  return {t:name,d:p.join(" · ")};
+}
+function summaryText(ch){
+  const bl=baseOf(); const hsB=holeStats(bl), hsP=holeStats(S.layout);
+  const lines=[`Brockway Park disc golf — change set: ${layName(S.layout)}`,`Compared with: ${layName(bl)}`,`Prepared: ${new Date().toLocaleDateString()}`,""];
+  const tot=totals(ch);
+  lines.push("TOTALS",`  Tee pads relocated: ${tot.teeMove}`,`  Baskets relocated: ${tot.bMove}`,`  New tee pads: ${tot.teeNew}   New baskets: ${tot.bNew}`,`  Items removed: ${tot.rem}`,`  Grade raised (fill) at ${tot.fillN} points, total ${fmt(tot.fill,1)} ft`,`  Grade lowered (cut) at ${tot.cutN} points, total ${fmt(tot.cut,1)} ft`,"");
+  lines.push("CHANGES");
+  for(const c of ch){ const l=changeLine(c); lines.push(`- ${l.t}: ${l.d}`); if(c.f.note) lines.push(`    Note${c.f.noteAt?" ("+when(c.f.noteAt)+")":""}: ${c.f.note}`); }
+  lines.push("",`HOLE LENGTHS (ft, ${layName(bl).toLowerCase()} → proposed)`);
+  const hs=new Set([...hsB,...hsP].map(h=>h.hole));
+  [...hs].sort((a,b)=>a-b).forEach(h=>{ const b=hsB.find(x=>x.hole===h)||{}, p=hsP.find(x=>x.hole===h)||{};
+    const f=(t)=>`${b[t+"d"]!=null?fmt(b[t+"d"]):"—"} → ${p[t+"d"]!=null?fmt(p[t+"d"]):"—"}`;
+    lines.push(`  Hole ${h}: long ${f("L")}, short ${f("S")}`); });
+  return lines.join("\n");
+}
+function totals(ch){
+  const t={teeMove:0,bMove:0,teeNew:0,bNew:0,rem:0,fill:0,cut:0,fillN:0,cutN:0};
+  for(const c of ch){ const tee=c.f.kind.startsWith("tee");
+    if(c.type==="added"){ if(tee)t.teeNew++; else if(c.f.kind==="basket")t.bNew++; }
+    else if(c.type==="removed") t.rem++;
+    else { if(c.d>=0.5){ if(tee)t.teeMove++; else if(c.f.kind==="basket")t.bMove++; }
+      if(c.dz>=0.05){t.fill+=c.dz;t.fillN++;} if(c.dz<=-0.05){t.cut-=c.dz;t.cutN++;} } }
+  return t;
+}
+function revertChange(key){
+  if(!editable()) return; const bl=baseOf(); if(!bl) return;
+  const cleared=!!S.layouts[S.layout].clearedNotes;
+  const a=S.feats[docId(bl,key)], b=findKey(key); const name=describe(b||a);
+  let after=null; if(a){ after={...clone(a),layout:S.layout}; if(cleared){ after.note=""; delete after.noteAt; } }
+  clearTimeout(saveTimers[key]);
+  pushHist(S.layout,key,b||null,after,"revert of "+name);
+  const id=docId(S.layout,key);
+  if(after){ S.feats[id]=after; save(after); } else if(b){ delete S.feats[id]; del(b); if(S.sel===key) S.sel=null; }
+  rebuild(); renderPane(); toast("Reverted "+name+" · Ctrl+Z brings it back");
+}
+function changesHTML(){
+  if(locked()||!baseOf()) return `<h2>Changes</h2><p class="sub">Change sets compare an improvement plan with the current course.</p>
+    <div class="empty">${locked()?"<b>Current course</b> is the read-only record of the course today.":"This layout has nothing to compare against."} Open a proposal tab at the top: every tee, basket, grade or note change you make there is listed here with a summary for work estimates.</div>`;
+  const ch=diff(); const t=totals(ch);
+  if(!ch.length) return `<h2>Changes</h2><p class="sub">${esc(layName(S.layout))} vs ${esc(layName(baseOf()))}</p><div class="empty">No changes yet. Move a tee or basket, or edit an elevation, and it will be listed here.</div>`;
+  return `<h2>Changes</h2><p class="sub">${esc(layName(S.layout))} vs ${esc(layName(baseOf()))} · ${ch.length} change${ch.length>1?"s":""}</p>
+  <div class="totals"><span>Tee pads relocated</span><b>${t.teeMove}</b><span>Baskets relocated</span><b>${t.bMove}</b><span>New tee pads / baskets</span><b>${t.teeNew} / ${t.bNew}</b><span>Removed</span><b>${t.rem}</b>
+  <span>Fill (raise grade)</span><b>${fmt(t.fill,1)} ft · ${t.fillN} pts</b><span>Cut (lower grade)</span><b>${fmt(t.cut,1)} ft · ${t.cutN} pts</b></div>
+  ${ch.map(c=>{const l=changeLine(c);return `<div class="change clickable" data-key="${esc(c.f.key)}"><div class="t">${esc(l.t)}</div>${editable()?`<button class="btn rv" type="button" data-revert="${esc(c.f.key)}" title="Put this item back the way it is on ${esc(layName(baseOf()))}">Revert</button>`:""}<div class="d">${esc(l.d)}</div>${c.f.note?`<div class="n">${esc(c.f.note)}${c.f.noteAt?` <span class="delta">· ${esc(when(c.f.noteAt))}</span>`:""}</div>`:""}</div>`}).join("")}
+  <h3>Summary for estimates</h3><pre class="summary" id="sumTxt">${esc(summaryText(ch))}</pre>
+  <button class="btn primary" type="button" id="copySum">Copy summary</button>`;
+}
+function siteHTML(){
+  const g=S.ground; const dis=S.canWrite&&S.db?"":"disabled";
+  return `<h2>Site</h2><p class="sub">View settings and an optional aerial or course-map image draped on the ground for tracing positions.</p>
+  <div class="field"><label class="lbl" for="exag">Vertical exaggeration · ${S.exag}×</label><input type="range" id="exag" min="1" max="10" step="0.5" value="${S.exag}"></div>
+  <div class="field"><label class="lbl" for="msc">Marker size · ${S.markerScale}×</label><input type="range" id="msc" min="1" max="6" step="0.5" value="${S.markerScale}"></div>
+  <div class="field"><label class="lbl" for="cint">Contour interval (ft)</label><select id="cint">${[0.5,1,2,5].map(v=>`<option ${v===S.contour?"selected":""}>${v}</option>`).join("")}</select></div>
+  <h3>Backdrop</h3>
+  <div class="field"><label class="lbl" for="g-show">Show on the ground</label><select id="g-show">
+    <option value="clean" ${(g&&g.show||"clean")==="clean"?"selected":""} ${g&&g.clean?"":"disabled"}>Clean site map</option>
+    <option value="photo" ${g&&g.show==="photo"?"selected":""} ${g&&g.photo?"":"disabled"}>Aerial photo</option>
+    <option value="none" ${g&&g.show==="none"?"selected":""}>Terrain only</option></select></div>
+  <p class="sub">The clean map and the photo share one position, so aligning one aligns both. Uploading a new image replaces the aerial photo.</p>
+  <div class="field"><label class="lbl" for="gfile">Replace aerial photo</label><input id="gfile" type="file" accept="image/*" ${dis}></div>
+  ${g&&(g.clean||g.photo||g.url)?`<div class="row2"><div class="field"><label class="lbl" for="g-cx">Center east (ft)</label><input id="g-cx" type="number" value="${g.cx}" ${dis}></div><div class="field"><label class="lbl" for="g-cy">Center north (ft)</label><input id="g-cy" type="number" value="${g.cy}" ${dis}></div></div>
+  <div class="row2"><div class="field"><label class="lbl" for="g-w">Width (ft)</label><input id="g-w" type="number" value="${g.w}" ${dis}></div><div class="field"><label class="lbl" for="g-rot">Rotation (°)</label><input id="g-rot" type="number" step="0.5" value="${g.rot}" ${dis}></div></div>
+  <div class="field"><label class="lbl" for="g-op">Opacity · ${Math.round(g.op*100)}%</label><input type="range" id="g-op" min="0" max="1" step="0.05" value="${g.op}"></div>`:""}
+  <div id="expBox">
+  <h3>Public website</h3>
+  <p class="sub">Download the layouts as course.json, then upload it to the data folder of the GitHub site to update the public copy.</p>
+  <div class="checks" style="display:grid;gap:4px;margin-bottom:8px">${visibleLayouts().map(id=>`<label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-exp="${esc(id)}" ${id==="current"?"checked disabled":(id==="improvements"?"":"checked")}>${esc(layName(id))}</label>`).join("")}</div>
+  <button class="btn primary" type="button" id="expBtn">Download course.json</button>
+  </div>
+  <h3>Reference</h3><p class="sub">Hole lengths and pars come from UDisc's Blue (long) and Red (short) layouts: 9 baskets, long tees total 2,956 ft (par 30), short tees 1,979 ft (par 28). Course center is near 44.7517° N, 93.1217° W.</p>`;
+}
+function bindPane(){
+  const f=findKey(S.sel);
+  const on=(id,ev,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener(ev,fn);};
+  const ub=document.getElementById("unlockBtn"); if(ub) ub.onclick=()=>setUnlock(true);
+  const rb=document.getElementById("relockBtn"); if(rb) rb.onclick=()=>setUnlock(false);
+  if(S.tab==="inspect"&&f){
+    const upd=(fn,soon,what)=>{const b=clone(f); fn(f); rebuild(); soon?saveSoon(f):save(f); pushHist(S.layout,f.key,b,f,(what||"edit")+" of "+describe(f),soon?"z":null); };
+    on("f-kind","change",e=>{upd(f=>f.kind=e.target.value); renderPane();});
+    on("f-hole","change",e=>{upd(f=>f.hole=e.target.value?parseInt(e.target.value,10):null); renderPane();});
+    on("f-x","change",e=>upd(f=>f.x=+e.target.value||0));
+    on("f-y","change",e=>upd(f=>f.y=+e.target.value||0));
+    on("f-r","change",e=>upd(f=>f.r=Math.max(3,+e.target.value||15)));
+    on("f-z","change",e=>{upd(f=>f.z=Math.round((+e.target.value||BASE)*10)/10); $("#f-dist").textContent=distLine(f);});
+    on("zup","click",()=>{upd(f=>f.z=Math.round((f.z+0.5)*10)/10,true); $("#f-z").value=f.z; $("#f-dist").textContent=distLine(f);});
+    on("zdn","click",()=>{upd(f=>f.z=Math.round((f.z-0.5)*10)/10,true); $("#f-z").value=f.z; $("#f-dist").textContent=distLine(f);});
+    on("f-label","input",e=>{const b=clone(f); f.label=e.target.value; saveSoon(f); pushHist(S.layout,f.key,b,f,"label edit on "+describe(f),"label");});
+    on("f-note","input",e=>{const b=clone(f); f.note=e.target.value; f.noteAt=new Date().toISOString(); saveSoon(f); pushHist(S.layout,f.key,b,f,"note edit on "+describe(f),"note");});
+    on("focusBtn","click",()=>focusOn(f.x,f.y));
+    on("delBtn","click",()=>{S.confirmDel=true;renderPane();});
+    on("delNo","click",()=>{S.confirmDel=false;renderPane();});
+    on("delYes","click",()=>{pushHist(S.layout,f.key,f,null,"deleting "+describe(f)); delete S.feats[docId(f.layout,f.key)]; del(f); S.sel=null; S.confirmDel=false; rebuild(); renderPane(); toast("Deleted");});
+  }
+  if(S.tab==="holes") document.querySelectorAll("tr[data-hole]").forEach(tr=>tr.addEventListener("click",()=>{
+    const h=+tr.dataset.hole; const st=holeStats(S.layout).find(x=>x.hole===h); const a=st.L||st.S||st.b, b=st.b||a; focusOn((a.x+b.x)/2,(a.y+b.y)/2); select(b.key);}));
+  if(S.tab==="changes"){
+    document.querySelectorAll("[data-revert]").forEach(b=>b.addEventListener("click",ev=>{ev.stopPropagation(); revertChange(b.dataset.revert);}));
+    document.querySelectorAll(".change[data-key]").forEach(c=>c.addEventListener("click",()=>{ const k=c.dataset.key; const f=findKey(k)||S.feats[docId(baseOf(),k)]; if(f) focusOn(f.x,f.y); if(findKey(k)){ S.sel=k; buildMarkers(); } }));
+  }
+  if(S.tab==="changes") on("copySum","click",()=>{ const txt=$("#sumTxt").textContent;
+    navigator.clipboard.writeText(txt).then(()=>toast("Summary copied")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#sumTxt"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("Press Ctrl+C or ⌘C to copy");}); });
+  if(S.tab==="site"){
+    on("exag","input",e=>{S.exag=+e.target.value; e.target.previousElementSibling.textContent=`Vertical exaggeration · ${S.exag}×`; rebuild();});
+    on("msc","input",e=>{S.markerScale=+e.target.value; e.target.previousElementSibling.textContent=`Marker size · ${S.markerScale}×`; buildMarkers();});
+    on("cint","change",e=>{S.contour=+e.target.value; terMat.uniforms.uInt.value=S.contour;});
+    on("gfile","change",uploadGround);
+    on("expBtn","click",exportPublic);
+    const gset=(k,v)=>{ S.ground={...S.ground,[k]:v}; applyGround(); saveGroundSoon(); };
+    on("g-show","change",e=>{gset("show",e.target.value); renderPane();});
+    on("g-cx","change",e=>gset("cx",+e.target.value||0)); on("g-cy","change",e=>gset("cy",+e.target.value||0));
+    on("g-w","change",e=>gset("w",Math.max(10,+e.target.value||800))); on("g-rot","change",e=>gset("rot",+e.target.value||0));
+    on("g-op","input",e=>{e.target.previousElementSibling.textContent=`Opacity · ${Math.round(e.target.value*100)}%`; gset("op",+e.target.value);});
+  }
+}
+
+// ---------- ground image ----------
+let groundImg=null, gTimer=null, gBusy=false, gPend=false;
+function saveGroundSoon(){ clearTimeout(gTimer); gTimer=setTimeout(saveGround,500); }
+async function saveGround(){ if(!S.db||!S.canWrite) return; if(gBusy){gPend=true;return;} gBusy=true;
+  try{ await S.db.collection("settings").doc("ground").set({...S.ground}); }catch(e){onWriteErr(e)} gBusy=false; if(gPend){gPend=false;saveGround();} }
+async function uploadGround(e){
+  const file=e.target.files[0]; if(!file) return;
+  const assets=await window.claude?.use?.("assets").catch(()=>null);
+  if(!assets){ toast("Image upload isn't available to you on this plan."); return; }
+  toast("Uploading image…");
+  try{ const r=await assets.upload(file); const ex=extent();
+    S.ground={assetId:r.id,url:r.url,cx:Math.round((ex[0]+ex[1])/2),cy:Math.round((ex[2]+ex[3])/2),w:Math.round(ex[1]-ex[0]),rot:0,op:0.85,...(S.ground&&S.ground.url?{cx:S.ground.cx,cy:S.ground.cy,w:S.ground.w,rot:S.ground.rot,op:S.ground.op}:{})};
+    S.ground.photo={id:r.id,url:r.url}; S.ground.show="photo"; delete S.ground.url; delete S.ground.assetId;
+    applyGround(); await saveGround(); renderPane(); toast("Image added. Now line it up.");
+  }catch(err){ toast("The image didn't upload. Try a PNG or JPG under 20 MB."); }
+}
+function applyGround(){
+  const g0=S.ground; const u=terMat.uniforms;
+  const url=g0?(g0.show==="none"?null:(g0[g0.show||"clean"]&&g0[g0.show||"clean"].url)||g0.url):null;
+  if(!url){u.uHasTex.value=0;return;}
+  const g={...g0,url};
+  const set=()=>{ const ar=groundImg.height/groundImg.width; u.uTexC.value.set(g.cx,g.cy); u.uTexS.value.set(g.w,g.w*ar); u.uRot.value=g.rot*Math.PI/180; u.uOpac.value=g.op; u.uHasTex.value=1; };
+  if(groundImg&&groundImg._url===g.url) return set();
+  const img=new Image(); img.onload=()=>{ groundImg=img; img._url=g.url; const t=new THREE.Texture(img); t.needsUpdate=true; t.minFilter=THREE.LinearFilter; if(u.uTex.value) u.uTex.value.dispose(); u.uTex.value=t; set(); };
+  img.onerror=()=>toast("The ground image couldn't be loaded."); img.src=g.url;
+}
+
+// ---------- export for the public site ----------
+async function exportPublic(){
+  const pick=[...document.querySelectorAll("[data-exp]:checked")].map(x=>x.dataset.exp);
+  const ids=[...new Set(["current",...pick])].filter(id=>S.layouts[id]);
+  const layouts={}; ids.forEach(id=>{ layouts[id]={...S.layouts[id]}; });
+  const features=Object.values(S.feats).filter(f=>layouts[f.layout]).map(f=>({...f}));
+  const g=S.ground||{};
+  const data={format:"brockway-course/1",exportedAt:new Date().toISOString(),defaultLayout:ids.find(i=>i!=="current")||"current",layouts,features,
+    ground:{show:g.show||"clean",cx:g.cx||0,cy:g.cy||0,w:g.w||1104,rot:g.rot||0,op:g.op??1,clean:{url:"assets/brockway-basemap.png"},photo:{url:"assets/brockway-aerial.png"}}};
+  const dl=await (window.claude?.use?.("downloads")??Promise.resolve(null)).catch(()=>null);
+  if(!dl){ toast("Downloads aren't available in this view."); return; }
+  try{ await dl.save({filename:"course.json",data:JSON.stringify(data,null,1)}); toast("Saved course.json"); }
+  catch(e){ if(e&&e.code!=="declined") toast("The file couldn't be saved. Try again in a moment."); }
+}
+
+// ---------- layouts ----------
+function visibleLayouts(){
+  let ids=Object.keys(S.layouts); if(S.layouts.current) ids=ids.filter(i=>i!=="baseline");
+  const rank=i=>i==="current"?0:i==="improvements"?1:2;
+  return ids.sort((a,b)=>rank(a)-rank(b)||(S.layouts[a].createdAt||"").localeCompare(S.layouts[b].createdAt||""));
+}
+function renderLayoutSel(){
+  const nav=$("#layTabs");
+  nav.innerHTML=visibleLayouts().map(id=>`<button type="button" data-lay="${esc(id)}" aria-current="${id===S.layout}">${esc(S.layouts[id].name||id)}${S.layouts[id].locked?`<span class="ro">${locked(id)?"Read-only":"Editing"}</span>`:""}</button>`).join("");
+  nav.querySelectorAll("button").forEach(b=>b.onclick=()=>switchLayout(b.dataset.lay));
+  $("#newPropBtn").disabled=!(S.canWrite&&S.db);
+  $("#delPropBtn").hidden=!deletable(); $("#delPropBtn").disabled=!(S.canWrite&&S.db);
+  document.querySelectorAll("#modeGrp button").forEach(b=>{ if(b.dataset.mode!=="select") b.hidden=locked(); });
+  if(locked()&&S.mode!=="select") setMode("select");
+  $("#hint").textContent = locked() ? "Read-only snapshot. Drag to orbit · scroll to zoom · click an item to read its notes." : (S.mode==="select"?"Drag to orbit · scroll to zoom · right-drag to pan. Click an item to read its notes.":$("#hint").textContent);
+}
+const PROTECTED=["current","improvements","baseline"];
+function deletable(l){ l=l||S.layout; return !!S.layouts[l]&&!lockable(l)&&!PROTECTED.includes(l); }
+$("#delPropBtn").addEventListener("click",()=>{
+  const hdr=document.querySelector(".hdr-ctl"); if(hdr.querySelector("#delConfirm")||!deletable()) return;
+  const id=S.layout, name=layName(id), n=layoutFeats(id).length;
+  const box=document.createElement("span"); box.className="inline"; box.id="delConfirm";
+  box.innerHTML=`<span style="font-size:13px">Delete <b>${esc(name)}</b> and its ${n} items? This can't be undone.</span><button class="btn danger" id="delPropYes" type="button">Delete</button><button class="btn" id="delPropNo" type="button">Keep it</button>`;
+  hdr.appendChild(box);
+  $("#delPropNo").onclick=()=>box.remove();
+  $("#delPropYes").onclick=async()=>{
+    box.remove(); const fs=layoutFeats(id);
+    const fallback=visibleLayouts().includes("improvements")?"improvements":"current";
+    delete S.layouts[id]; fs.forEach(f=>delete S.feats[docId(id,f.key)]); delete HIST[id];
+    switchLayout(fallback); toast("Deleting "+name+"…");
+    try{
+      await S.db.collection("layouts").doc(id).delete();
+      for(let i=0;i<fs.length;i+=5) await Promise.all(fs.slice(i,i+5).map(f=>S.db.collection("features").doc(docId(id,f.key)).delete()));
+      toast("Deleted "+name);
+    }catch(e){ onWriteErr(e); }
+  };
+});
+function switchLayout(id){ for(const k in UNLOCK) delete UNLOCK[k]; S.layout=id; try{localStorage.setItem("bw-layout",S.layout)}catch(x){} S.sel=null; renderLayoutSel(); rebuild(); renderPane(); syncUndoBtns(); }
+$("#newPropBtn").addEventListener("click",()=>{
+  const hdr=document.querySelector(".hdr-ctl"); if(hdr.querySelector("#propName")) return;
+  const n=Object.keys(S.layouts).length;
+  const box=document.createElement("span"); box.className="inline";
+  box.innerHTML=`<input id="propName" type="text" value="Proposal ${n}" aria-label="Proposal name"><button class="btn primary" id="propOk" type="button">Create from ${esc(layName(S.layouts.current?"current":S.layout))}</button><button class="btn" id="propNo" type="button">Cancel</button>`;
+  hdr.appendChild(box); $("#propName").select();
+  $("#propNo").onclick=()=>box.remove();
+  $("#propOk").onclick=async()=>{
+    const name=$("#propName").value.trim()||("Proposal "+n); const id="p"+Date.now().toString(36);
+    const from=S.layouts.current?"current":S.layout; const src=layoutFeats(from); box.remove();
+    try{
+      const meta={name,basedOn:from,clearedNotes:true,createdAt:new Date().toISOString()};
+      await S.db.collection("layouts").doc(id).set(meta);
+      S.layouts[id]=meta; S.layout=id; try{localStorage.setItem("bw-layout",id)}catch(x){}
+      for(const f of src){ const c={...f,layout:id,note:""}; delete c.noteAt; S.feats[docId(id,f.key)]=c; save(c); }
+      renderLayoutSel(); rebuild(); setTab("changes"); toast(`Created ${name}. Edits now go to the proposal.`);
+    }catch(e){ onWriteErr(e); }
+  };
+});
+
+// ---------- boot ----------
+resize(); themeBg(); renderLayoutSel(); syncUndoBtns(); renderPane(); setMode("select"); buildTerrain(); frame("pers");
+const st=$("#status");
+function setStatus(t,bad){st.textContent=t;st.classList.toggle("bad",!!bad);}
+(async()=>{
+  const db=await (window.claude?.use?.("db")??Promise.resolve(null)).catch(()=>null);
+  if(!db){ setStatus("Sign in to Claude to load the course",true); S.canWrite=false; renderPane(); renderLayoutSel(); return; }
+  S.db=db;
+  const user=await (window.claude?.use?.("user")??Promise.resolve(null)).catch(()=>null);
+  if(user){ try{ const c=await user.can("data.write"); if(c===false) S.canWrite=false; }catch(e){} }
+  renderLayoutSel(); renderPane();
+  let timer=setTimeout(()=>setStatus("Can't reach saved data yet",true),10000);
+  let first=true;
+  db.collection("features").onSnapshot(snap=>{
+    if(!snap.metadata.fromCache){clearTimeout(timer); setStatus(window.__PUBLIC_DATE?"Updated "+window.__PUBLIC_DATE:(S.canWrite?"Saved":"View only"));}
+    const next={}; snap.docs.forEach(d=>{ const v=d.data(); if(v&&v.layout&&v.key) next[d.id]={...v}; });
+    if(drag&&drag.key){ const id=docId(S.layout,drag.key); if(S.feats[id]) next[id]=S.feats[id]; }
+    for(const id in pend) next[id]=pend[id];
+    // keep focused input from being clobbered mid-typing
+    const ae=document.activeElement; const typing=ae&&(ae.tagName==="TEXTAREA"||ae.tagName==="INPUT")&&S.tab==="inspect";
+    S.feats=next;
+
+    if(first){ first=false; const zs=Object.values(next).map(f=>f.z).filter(Number.isFinite); if(zs.length) BASE=Math.min(...zs)-2; rebuild(); frame("pers"); }
+    else rebuild();
+    if(!typing) renderPane(); else if(S.tab==="inspect") renderPaneLive();
+  },err=>{clearTimeout(timer); setStatus("Saved data unavailable",true);});
+  db.collection("layouts").onSnapshot(snap=>{
+    const L={}; snap.docs.forEach(d=>{ const v=d.data(); if(v) L[d.id]={...v}; }); if(snap.docs.length) S.layouts=L;
+    const vis=visibleLayouts();
+    if(!vis.includes(S.layout)){ S.layout=(window.__PUBLIC_DEFAULT&&vis.includes(window.__PUBLIC_DEFAULT))?window.__PUBLIC_DEFAULT:(vis.includes("improvements")?"improvements":(vis[0]||"baseline")); S.sel=null; rebuild(); renderPane(); }
+    renderLayoutSel(); syncUndoBtns(); const ae=document.activeElement; if(!(ae&&ae.closest&&ae.closest(".pane")&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName))) renderPane();
+  },()=>{});
+  db.collection("settings").doc("ground").onSnapshot(d=>{ if(d.exists){ S.ground={...d.data()}; applyGround(); if(S.tab==="site"&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest(".pane"))) renderPane(); } },()=>{});
+})();
+})();
+</script>
+
+</body>
+</html>
