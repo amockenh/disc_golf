@@ -13,6 +13,21 @@ An interactive 3D map of the [Brockway Park](https://udisc.com/courses/brockway-
 - **Changes** lists every change in the plan, with a summary you can copy for estimates. Notes are tagged by plan goal (G1–G6).
 - **Site** switches the ground between the drawn site map and the aerial photo.
 
+## Suggesting changes
+
+Anyone can suggest changes. No account is needed.
+
+1. Click **New proposal** to start a draft from the current course, or open a published plan and click **Copy to a draft**.
+2. Move tees and baskets, add markers and write notes. The draft saves in your browser.
+3. On the **Changes** tab, under **Share your draft**:
+   - **Copy share link** gives a link that opens your draft for anyone. Send it to the course team.
+   - **Download file** saves the draft as a file you can email.
+   - **Submit on GitHub** opens a pull request in this repository (needs a free GitHub account).
+
+Drafts stay in the browser where they were made. Clearing browser data removes them, so share or download anything you want to keep.
+
+Proposals merged into the [`proposals`](proposals/) folder appear on the map as **Published** tabs.
+
 Positions were traced from the course sign over an aerial photo, with each tee set to UDisc's listed length. Positions and elevations are approximate.
 
 ## The improvement plan
@@ -38,5 +53,6 @@ The plan is edited in the private planning tool, then published here.
 |---|---|
 | `index.html` | The map page |
 | `data/course.json` | Layouts, tees, baskets, markers and notes |
+| `proposals/` | Community proposals, one file each |
 | `assets/` | Site map drawing and aerial photo |
 | `vendor/` | three.js 0.128.0 (MIT license) for the 3D view |

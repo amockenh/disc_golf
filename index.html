@@ -108,6 +108,11 @@ tr.click:hover td{background:color-mix(in srgb,var(--moss) 8%,transparent)}
 .change .t{font-weight:600}
 .change .d{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .change .n{font-size:12.5px;margin-top:3px;white-space:pre-line}
+.draftbox{border:1px solid var(--signal);border-radius:6px;padding:12px;margin-bottom:18px;background:color-mix(in srgb,var(--signal) 5%,transparent)}
+.draftbox h2{font-size:18px}
+.stepper #d-copybtn{width:auto;padding:0 12px}
+.ghsteps{margin:10px 0 4px;padding-left:20px;font-size:13px;display:grid;gap:4px}
+.ghsteps code{font-family:var(--f-mono);font-size:12px;overflow-wrap:anywhere}
 .change{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:start}
 .change>div{grid-column:1;min-width:0}
 .change .rv{grid-column:2;grid-row:1 / span 3;padding:3px 9px;font-size:12px}
@@ -128,7 +133,7 @@ input[type=range]{width:100%;accent-color:var(--moss)}
   .app{height:auto;min-height:100%}
 }
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
-body.public #modeGrp,body.public #newPropBtn,body.public #delPropBtn,body.public .grp:has(#undoBtn),body.public #expBox,body.public .field:has(#gfile),body.public .row2:has(#g-cx),body.public .row2:has(#g-w){display:none!important}
+body.public .locknote .inline:has(#unlockBtn),body.public #expBox,body.public .field:has(#gfile),body.public .row2:has(#g-cx),body.public .row2:has(#g-w){display:none!important}
 .pubfoot{font-size:11.5px;color:var(--muted)}
 .pubfoot a{color:inherit}
 </style>
@@ -142,6 +147,8 @@ body.public #modeGrp,body.public #newPropBtn,body.public #delPropBtn,body.public
       <nav class="laytabs" id="layTabs" aria-label="Layouts"></nav>
       <button class="btn" id="newPropBtn" type="button">New proposal</button>
       <button class="btn danger" id="delPropBtn" type="button" hidden>Delete proposal</button>
+      <button class="btn" id="openDraftBtn" type="button" hidden>Open draft file</button>
+      <input type="file" id="openDraftFile" accept=".json,application/json" hidden>
     </div>
   </header>
   <div class="main">
@@ -173,7 +180,7 @@ body.public #modeGrp,body.public #newPropBtn,body.public #delPropBtn,body.public
         <span><i style="background:#e3b23c"></i>Grade point</span>
         <span><i style="background:#2f5b36"></i>Tree</span>
       </div>
-      <div class="hint" id="hint">Drag to orbit · scroll to zoom · right-drag to pan. Click an item to read its notes.</div>
+      <div class="hint" id="hint">Drag to orbit · scroll to zoom · right-drag to pan. In a draft, drag a tee or basket to move it.</div>
       <div class="toast" id="toast" hidden></div>
     </div>
     <aside>
@@ -191,31 +198,180 @@ body.public #modeGrp,body.public #newPropBtn,body.public #delPropBtn,body.public
 <script>
 (function(){
   "use strict";
-  // Read-only stand-in for the planner's data store, fed from data/course.json.
-  const ready=fetch("data/course.json",{cache:"no-cache"}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
-  const ro=()=>Promise.reject({code:"invalid_argument",message:"This public copy is view-only."});
+  // Browser-side stand-in for the planner's data store.
+  // Published data (data/course.json and merged proposals/*.json) is read-only;
+  // drafts live in this browser's localStorage.
+  const REPO="amockenh/disc_golf", BRANCH="main", DKEY="bw-drafts-v1";
+  const KINDS=new Set(["tee-long","tee-short","basket","grade","tree"]);
+  const store={features:{},layouts:{},ground:null};
+  const listeners={features:[],layouts:[],ground:[]};
+  let loaded=false, emitT=null, persistT=null;
   const snapDoc=(id,d)=>({id,exists:!!d,data:()=>d,metadata:{fromCache:false,hasPendingWrites:false}});
   const snapQ=docs=>({docs,size:docs.length,empty:!docs.length,metadata:{fromCache:false,hasPendingWrites:false},docChanges:()=>[]});
-  const order={layouts:0,features:1,settings:2}; const queue=[];
-  function deliver(fn,k){ queue.push([order[k]??3,fn]); }
-  ready.then(data=>{
-    const dt=new Date(data.exportedAt); window.__PUBLIC_DEFAULT=data.defaultLayout;
-    window.__PUBLIC_DATE=isNaN(dt)?"":dt.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
-    window.__COURSE=data;
-    setTimeout(()=>{ queue.sort((a,b)=>a[0]-b[0]).forEach(([,fn])=>fn(data)); queue.length=0; },0);
-  }).catch(()=>{ const st=document.getElementById("status"); if(st){ st.textContent="Couldn't load the course data"; st.classList.add("bad"); } });
-  function collection(name){ return {
-    onSnapshot(next){ deliver(data=>{
-      if(name==="features") next(snapQ(data.features.map(f=>snapDoc(f.layout+"__"+f.key,f))));
-      else if(name==="layouts") next(snapQ(Object.entries(data.layouts).map(([id,v])=>snapDoc(id,v))));
-      else next(snapQ([]));
-    },name); return ()=>{}; },
-    doc(id){ return { set:ro, update:ro, delete:ro, get:()=>ready.then(d=>snapDoc(id,name==="settings"&&id==="ground"?d.ground:undefined)),
-      onSnapshot(next){ deliver(d=>next(snapDoc(id,name==="settings"&&id==="ground"?d.ground:undefined)),name); return ()=>{}; } }; }
+  const qLayouts=()=>snapQ(Object.entries(store.layouts).map(([id,v])=>snapDoc(id,{...v})));
+  const qFeatures=()=>snapQ(Object.entries(store.features).map(([id,v])=>snapDoc(id,{...v})));
+  function emit(){ if(!loaded) return; clearTimeout(emitT); emitT=setTimeout(()=>{ const L=qLayouts(), F=qFeatures(); listeners.layouts.forEach(fn=>fn(L)); listeners.features.forEach(fn=>fn(F)); },0); }
+  function setStatus(t){ const st=document.getElementById("status"); if(st){ st.textContent=t; st.classList.add("bad"); } }
+  function persist(){ clearTimeout(persistT); persistT=setTimeout(()=>{
+    const out={layouts:{},features:{}};
+    for(const [id,l] of Object.entries(store.layouts)) if(l.draft) out.layouts[id]=l;
+    for(const [id,f] of Object.entries(store.features)) if(store.layouts[f.layout]&&store.layouts[f.layout].draft) out.features[id]=f;
+    try{ localStorage.setItem(DKEY,JSON.stringify(out)); }catch(e){ setStatus("Drafts can't be saved in this browser"); }
+  },250); }
+  function norm(f,layout){
+    if(!f||typeof f!=="object"||!KINDS.has(f.kind)) return null;
+    const key=String(f.key||"").replace(/[^A-Za-z0-9_.:-]/g,"").slice(0,80); if(!key) return null;
+    const n=v=>{ const x=+v; return Number.isFinite(x)?x:0; };
+    const o={layout,key,kind:f.kind,hole:(f.hole==null||f.hole==="")?null:Math.round(n(f.hole)),x:n(f.x),y:n(f.y),z:n(f.z)||946,label:String(f.label||"").slice(0,200),note:String(f.note||"").slice(0,4000)};
+    if(f.kind==="tree") o.r=Math.max(3,Math.min(200,n(f.r)||15));
+    if(typeof f.noteAt==="string") o.noteAt=f.noteAt.slice(0,40);
+    return o;
+  }
+  const txt=(v,n)=>String(v==null?"":v).slice(0,n);
+  const featsOf=id=>Object.values(store.features).filter(f=>f.layout===id);
+  const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  function hash(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return (h>>>0).toString(36); }
+  function slug(name){ const d=new Date(); const ds=d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");
+    return (String(name||"draft").toLowerCase().replace(/\(my draft\)|\(shared\)/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"draft")+"-"+ds; }
+
+  // ---- published proposals from the repo's proposals/ folder
+  async function listProposals(){
+    const ck="bw-props-list";
+    try{ const c=JSON.parse(sessionStorage.getItem(ck)||"null"); if(c&&Date.now()-c.t<600000) return c.list; }catch(e){}
+    let list;
+    try{
+      const r=await fetch(`https://api.github.com/repos/${REPO}/contents/proposals?ref=${BRANCH}`,{headers:{Accept:"application/vnd.github+json"}});
+      if(r.status===404) list=[]; else if(!r.ok) throw new Error(r.status);
+      else list=(await r.json()).filter(x=>x&&x.type==="file"&&/\.json$/i.test(x.name)).map(x=>x.name);
+    }catch(e){
+      const r=await fetch("proposals/index.json",{cache:"no-cache"}).catch(()=>null);
+      list=r&&r.ok?((await r.json()).files||[]).filter(n=>/\.json$/i.test(n)):[];
+    }
+    try{ sessionStorage.setItem(ck,JSON.stringify({t:Date.now(),list})); }catch(e){}
+    return list;
+  }
+  async function loadProposals(){
+    const list=await listProposals(); const out=[];
+    await Promise.all(list.map(async name=>{ try{ const r=await fetch("proposals/"+encodeURIComponent(name),{cache:"no-cache"}); if(r.ok) out.push({name,doc:await r.json()}); }catch(e){} }));
+    out.sort((a,b)=>String(a.doc.createdAt||"").localeCompare(String(b.doc.createdAt||"")));
+    for(const {name,doc} of out){
+      if(!doc||!Array.isArray(doc.features)) continue;
+      const id="pub-"+name.replace(/\.json$/i,"").replace(/[^A-Za-z0-9_-]/g,"-").slice(0,60);
+      store.layouts[id]={name:txt(doc.name||name,80),basedOn:store.layouts[doc.basedOn]?doc.basedOn:"current",clearedNotes:!!doc.clearedNotes,
+        author:txt(doc.author,80),description:txt(doc.description,2000),createdAt:txt(doc.createdAt,40),published:true,file:name};
+      doc.features.forEach(f=>{ const n=norm(f,id); if(n) store.features[id+"__"+n.key]=n; });
+    }
+  }
+
+  // ---- share links: only the differences from the base layout, compressed
+  async function pack(str){
+    let bytes=new TextEncoder().encode(str), pre="1";
+    if(typeof CompressionStream==="function"){ const cs=new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw")); bytes=new Uint8Array(await new Response(cs).arrayBuffer()); pre="z"; }
+    let bin=""; for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+    return pre+btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+  async function unpack(s){
+    const pre=s[0]; let b=s.slice(1).replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4) b+="=";
+    const bin=atob(b); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    if(pre==="z"){ const ds=new Blob([u]).stream().pipeThrough(new DecompressionStream("deflate-raw")); return new TextDecoder().decode(await new Response(ds).arrayBuffer()); }
+    return new TextDecoder().decode(u);
+  }
+  const sk=o=>JSON.stringify(o,Object.keys(o).sort());
+  function strip(f,clearNote){ const c={...f}; delete c.layout; if(clearNote){ c.note=""; delete c.noteAt; } return c; }
+  async function shareUrl(id){
+    const l=store.layouts[id]; const base=store.layouts[l.basedOn]?l.basedOn:"current"; const cleared=!!l.clearedNotes;
+    const B={}; featsOf(base).forEach(f=>B[f.key]=f);
+    const c=[], keys=new Set();
+    featsOf(id).forEach(f=>{ keys.add(f.key); const b=B[f.key]; const s=strip(f,false); if(!b||sk(strip(b,cleared))!==sk(s)) c.push(s); });
+    const payload={v:1,n:l.name||"",a:l.author||"",d:l.description||"",b:base,cn:cleared?1:0,c,r:Object.keys(B).filter(k=>!keys.has(k))};
+    return location.origin+location.pathname+"#draft="+(await pack(JSON.stringify(payload)));
+  }
+  async function openFromHash(){
+    const m=/^#draft=([A-Za-z0-9_-]+)$/.exec(location.hash); if(!m) return;
+    history.replaceState(null,"",location.pathname+location.search);
+    const sig=hash(m[1]);
+    const have=Object.entries(store.layouts).find(([,l])=>l.draft&&l.sig===sig); if(have){ window.__PUBLIC_OPEN=have[0]; return; }
+    const p=JSON.parse(await unpack(m[1])); if(!p||p.v!==1) return;
+    const base=store.layouts[p.b]?p.b:"current", cleared=!!p.cn, id=newId("d");
+    store.layouts[id]={name:txt(p.n||"Shared draft",70)+" (shared)",author:txt(p.a,80),description:txt(p.d,2000),basedOn:base,clearedNotes:cleared,createdAt:new Date().toISOString(),draft:true,sig};
+    const removed=new Set((Array.isArray(p.r)?p.r:[]).map(String)), changed={};
+    (Array.isArray(p.c)?p.c:[]).forEach(f=>{ const n=norm(f,id); if(n) changed[n.key]=n; });
+    featsOf(base).forEach(f=>{ if(removed.has(f.key)||changed[f.key]) return; const c={...f,layout:id}; if(cleared){ c.note=""; delete c.noteAt; } store.features[id+"__"+f.key]=c; });
+    Object.values(changed).forEach(f=>{ store.features[id+"__"+f.key]=f; });
+    persist(); window.__PUBLIC_OPEN=id;
+  }
+
+  // ---- draft files
+  function toFile(id){
+    const l=store.layouts[id];
+    return {format:"brockway-proposal/1",name:l.name||"Draft",author:l.author||"",description:l.description||"",basedOn:l.basedOn||"current",clearedNotes:!!l.clearedNotes,
+      createdAt:l.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),features:featsOf(id).map(f=>strip(f,false))};
+  }
+  function download(id){
+    const f=toFile(id); const blob=new Blob([JSON.stringify(f,null,1)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=slug(f.name)+".json"; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+  }
+  function github(id){
+    const f=toFile(id); const text=JSON.stringify(f,null,1); const path="proposals/"+slug(f.name)+".json";
+    const prefilled=text.length<5000;
+    const url=`https://github.com/${REPO}/new/${BRANCH}?filename=${encodeURIComponent(path)}`+(prefilled?"&value="+encodeURIComponent(text):"");
+    return {text,path,url,prefilled};
+  }
+  function importText(t){
+    const doc=JSON.parse(t); if(!doc||doc.format!=="brockway-proposal/1"||!Array.isArray(doc.features)) return null;
+    const id=newId("d");
+    store.layouts[id]={name:txt(doc.name||"Draft",70),author:txt(doc.author,80),description:txt(doc.description,2000),basedOn:store.layouts[doc.basedOn]?doc.basedOn:"current",
+      clearedNotes:!!doc.clearedNotes,createdAt:new Date().toISOString(),draft:true};
+    doc.features.forEach(f=>{ const n=norm(f,id); if(n) store.features[id+"__"+n.key]=n; });
+    persist(); emit(); return id;
+  }
+
+  // ---- the store interface the planner calls
+  function write(col,id,d){
+    if(col==="features"){ const l=store.layouts[d&&d.layout]; if(!l||!l.draft) return Promise.resolve(); const n=norm(d,d.layout); if(!n) return Promise.resolve(); store.features[id]={...d,...n}; }
+    else if(col==="layouts"){ const cur=store.layouts[id]; if(cur&&!cur.draft) return Promise.resolve(); store.layouts[id]={...d,draft:true}; }
+    else return Promise.resolve();
+    persist(); emit(); return Promise.resolve();
+  }
+  function remove(col,id){
+    if(col==="features"){ const f=store.features[id]; if(f&&(!store.layouts[f.layout]||store.layouts[f.layout].draft)) delete store.features[id]; else return Promise.resolve(); }
+    else if(col==="layouts"){ if(store.layouts[id]&&store.layouts[id].draft) delete store.layouts[id]; else return Promise.resolve(); }
+    else return Promise.resolve();
+    persist(); emit(); return Promise.resolve();
+  }
+  function collection(col){ return {
+    onSnapshot(next){ const arr=col==="settings"?listeners.ground:listeners[col]; if(!arr) return ()=>{}; arr.push(next); if(loaded) setTimeout(()=>next(col==="layouts"?qLayouts():qFeatures()),0); return ()=>{ const i=arr.indexOf(next); if(i>=0) arr.splice(i,1); }; },
+    doc(id){ return {
+      set:d=>write(col,id,d), update:d=>write(col,id,{...(col==="features"?store.features[id]:store.layouts[id]),...d}), delete:()=>remove(col,id),
+      get:()=>Promise.resolve(snapDoc(id,col==="settings"&&id==="ground"?store.ground:(col==="layouts"?store.layouts[id]:store.features[id]))),
+      onSnapshot(next){ if(col==="settings"&&id==="ground"){ listeners.ground.push(next); if(loaded) setTimeout(()=>next(snapDoc(id,store.ground)),0); } return ()=>{}; }
+    }; }
   }; }
-  const db={collection,doc:p=>{const [c,id]=p.split("/");return collection(c).doc(id);}};
-  const user={can:async()=>false,canEdit:async()=>false,isOwner:async()=>false};
+  const db={collection,doc:p=>{ const [c,id]=p.split("/"); return collection(c).doc(id); }};
+  const user={can:async()=>true,canEdit:async()=>false,isOwner:async()=>false};
+  window.__PUBLIC={shareUrl,download,github,importText};
   window.claude={use:async n=>n==="db"?db:n==="user"?user:null};
+
+  (async()=>{
+    try{
+      const r=await fetch("data/course.json",{cache:"no-cache"}); if(!r.ok) throw new Error(r.status);
+      const data=await r.json();
+      for(const [id,l] of Object.entries(data.layouts||{})) store.layouts[id]=l.locked?{...l}:{...l,published:true};
+      for(const f of data.features||[]){ const n=norm(f,f.layout); if(n) store.features[f.layout+"__"+n.key]={...f,...n}; }
+      store.ground=data.ground||null;
+      const dt=new Date(data.exportedAt); window.__PUBLIC_DATE=isNaN(dt)?"":dt.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});
+      window.__PUBLIC_DEFAULT=data.defaultLayout;
+    }catch(e){ setStatus("Couldn't load the course data. Refresh to try again."); return; }
+    try{ await Promise.race([loadProposals(),new Promise(res=>setTimeout(res,5000))]); }catch(e){}
+    try{ const d=JSON.parse(localStorage.getItem(DKEY)||"null");
+      if(d){ for(const [id,l] of Object.entries(d.layouts||{})) store.layouts[id]={...l,draft:true};
+        for(const [id,f] of Object.entries(d.features||{})){ if(store.layouts[f.layout]&&store.layouts[f.layout].draft){ const n=norm(f,f.layout); if(n) store.features[id]={...f,...n}; } } } }catch(e){}
+    try{ await openFromHash(); }catch(e){ setStatus("That share link couldn't be opened"); }
+    loaded=true;
+    const L=qLayouts(), F=qFeatures();
+    listeners.layouts.forEach(fn=>fn(L)); listeners.features.forEach(fn=>fn(F)); listeners.ground.forEach(fn=>fn(snapDoc("ground",store.ground)));
+  })();
 })();
 </script>
 <script src="vendor/three.min.js"></script>
@@ -247,7 +403,10 @@ function lockable(l){ l=l||S.layout; return !!(S.layouts[l]&&S.layouts[l].locked
 function locked(l){ l=l||S.layout; return lockable(l)&&!UNLOCK[l]; }
 function setUnlock(on){ if(on) UNLOCK[S.layout]=true; else delete UNLOCK[S.layout]; if(!on) S.confirmDel=false;
   renderLayoutSel(); syncUndoBtns(); buildMarkers(); renderPane(); toast(on?"Editing the current course":"Current course is read-only again"); }
-function editable(){ return S.canWrite&&!!S.db&&!locked(); }
+const PUBLIC=!!window.__PUBLIC;
+function isPublished(l){ l=l||S.layout; return !!(S.layouts[l]&&S.layouts[l].published); }
+function isDraft(l){ l=l||S.layout; return !!(S.layouts[l]&&S.layouts[l].draft); }
+function editable(){ return S.canWrite&&!!S.db&&!locked()&&!isPublished(); }
 function baseOf(l){ l=l||S.layout; if(lockable(l)) return null; const b=S.layouts[l]&&S.layouts[l].basedOn; return b&&b!==l&&S.layouts[b]?b:null; }
 function layoutFeats(lay){return Object.values(S.feats).filter(f=>f.layout===lay)}
 function cur(){return layoutFeats(S.layout)}
@@ -255,7 +414,7 @@ function docId(lay,key){return lay+"__"+key}
 
 // ---------- write queue: one write at a time per doc, coalesced ----------
 const pend={},busy={};
-function save(f){ if(!S.db||!S.canWrite||locked(f.layout)) return; const id=docId(f.layout,f.key); pend[id]={...f}; pump(id); }
+function save(f){ if(!S.db||!S.canWrite||locked(f.layout)||isPublished(f.layout)) return; const id=docId(f.layout,f.key); pend[id]={...f}; pump(id); }
 async function pump(id){
   if(busy[id]||!pend[id]) return; busy[id]=true;
   const data=pend[id]; delete pend[id];
@@ -263,7 +422,7 @@ async function pump(id){
   catch(e){ onWriteErr(e); }
   busy[id]=false; pump(id);
 }
-async function del(f){ if(!S.db||!S.canWrite||locked(f.layout)) return; try{ await S.db.collection("features").doc(docId(f.layout,f.key)).delete(); }catch(e){onWriteErr(e)} }
+async function del(f){ if(!S.db||!S.canWrite||locked(f.layout)||isPublished(f.layout)) return; try{ await S.db.collection("features").doc(docId(f.layout,f.key)).delete(); }catch(e){onWriteErr(e)} }
 function onWriteErr(e){
   if(e&&e.code==="invalid_argument"){S.canWrite=false; renderPane(); toast("You can view this plan but not edit it.");}
   else if(e&&e.code==="quota_exceeded") toast("The plan's storage is full. Delete unused proposals first.");
@@ -454,7 +613,7 @@ function redo(){ if(!editable()) return; const h=hist(), e=h.r.pop(); if(!e) ret
 function syncUndoBtns(){ const h=hist(), ok=editable(); const u=$("#undoBtn"), r=$("#redoBtn"); if(!u) return;
   u.disabled=!ok||!h.u.length; r.disabled=!ok||!h.r.length;
   u.title=h.u.length?"Undo "+h.u[h.u.length-1].what+" (Ctrl+Z)":"Undo (Ctrl+Z)"; r.title=h.r.length?"Redo "+h.r[h.r.length-1].what+" (Ctrl+Shift+Z)":"Redo (Ctrl+Shift+Z)";
-  const grp=u.parentElement; grp.hidden=locked(); }
+  const grp=u.parentElement; grp.hidden=!editable(); }
 $("#undoBtn").onclick=undo; $("#redoBtn").onclick=redo;
 document.addEventListener("keydown",ev=>{
   if(!(ev.ctrlKey||ev.metaKey)||ev.altKey) return;
@@ -511,8 +670,8 @@ function findKey(key){ return S.feats[docId(S.layout,key)]; }
 function describe(f){ if(!f) return ""; const k=KIND[f.kind]?.name||f.kind; return (f.hole?("hole "+f.hole+" "):"")+k.toLowerCase(); }
 function select(key){ S.sel=key; S.confirmDel=false; if(key&&S.tab!=="inspect") setTab("inspect"); else renderPane(); buildMarkers();
   if(key&&matchMedia("(max-width:640px)").matches){ const a=document.querySelector("aside"); try{ a.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"}); }catch(e){} } }
-function setMode(m){ if(locked()&&m!=="select") m="select"; S.mode=m; document.querySelectorAll("#modeGrp button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m)));
-  $("#hint").textContent= m==="select" ? "Drag to orbit · scroll to zoom · right-drag to pan. Click an item to read its notes." : "Click the ground to place a "+KIND[m].name.toLowerCase()+". It joins the selected hole, or the next new hole.";
+function setMode(m){ if(!editable()&&m!=="select") m="select"; S.mode=m; document.querySelectorAll("#modeGrp button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m)));
+  $("#hint").textContent= m==="select" ? "Drag to orbit · scroll to zoom · right-drag to pan. In a draft, drag a tee or basket to move it." : "Click the ground to place a "+KIND[m].name.toLowerCase()+". It joins the selected hole, or the next new hole.";
 }
 document.querySelectorAll("#modeGrp button").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
 $("#planBtn").onclick=()=>frame("plan"); $("#persBtn").onclick=()=>frame("pers");
@@ -538,10 +697,12 @@ function renderPane(){
   const canUnlock=S.canWrite&&!!S.db;
   const ro= locked() ? `<div class="locknote"><b>Read-only</b><br>The course as it stands${L.snapshotAt?", recorded "+new Date(L.snapshotAt).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):""}. Open a proposal tab to see planned changes.${canUnlock?`<div class="inline" style="margin-top:8px"><button class="btn" type="button" id="unlockBtn">Edit current course</button><span class="delta">Use this to correct the record when the real course changes.</span></div>`:""}</div>`
     : lockable() ? `<div class="locknote" style="border-color:var(--signal)"><b style="color:var(--signal)">Editing the current course</b><br>Changes here update the record that Improvements and every proposal compare against.<div class="inline" style="margin-top:8px"><button class="btn primary" type="button" id="relockBtn">Done editing</button></div></div>`
+    : isPublished() ? `<div class="locknote"><b>Published plan</b><br>${L.description?esc(L.description):"A proposal merged into the public site."}${L.author?" · Suggested by "+esc(L.author):""}${S.canWrite&&S.db?`<div class="inline" style="margin-top:8px"><button class="btn" type="button" id="copyDraftBtn">Copy to a draft</button><span class="delta">Make your own version to adjust.</span></div>`:""}</div>`
+    : isDraft() ? `<div class="locknote" style="border-color:var(--signal)"><b style="color:var(--signal)">Your draft</b><br>Saved in this browser only. To share it, open the Changes tab.</div>`
     : (!S.canWrite||!S.db ? `<div class="readonly-note">${S.db?"This is a public, view-only copy of the Brockway course plan."+(window.__PUBLIC_DATE?" Last updated "+window.__PUBLIC_DATE+".":""):"The course data didn't load. Refresh the page to try again."}</div>`:"");
   if(S.tab==="inspect") p.innerHTML=ro+inspectHTML();
   else if(S.tab==="holes") p.innerHTML=(lockable()?ro:"")+holesHTML();
-  else if(S.tab==="changes") p.innerHTML=changesHTML();
+  else if(S.tab==="changes") p.innerHTML=(PUBLIC&&isDraft()?draftPanelHTML():"")+changesHTML();
   else p.innerHTML=ro+siteHTML();
   bindPane();
 }
@@ -557,7 +718,7 @@ function distLine(f){
 }
 function inspectHTML(){
   const f=findKey(S.sel);
-  if(!f) return `<h2>Inspect</h2><p class="sub">Click a tee pad, basket or marker on the map to read its details.</p>
+  if(!f) return `<h2>Inspect</h2><p class="sub">Click a tee pad, basket or marker on the map to see its details. To suggest changes, start a draft with New proposal.</p>
     <div class="empty"><b>${cur().length} features</b> in ${esc(layName(S.layout))}. Positions are in feet east and north of the center of the aerial image; elevations are feet above sea level.<br><br>
     Positions were traced from the course sign over an aerial photo, with each tee set to UDisc's listed length. Positions and elevations are approximate.</div>`;
   const bl=baseOf(); const base= bl&&!locked() ? S.feats[docId(bl,f.key)] : null;
@@ -660,7 +821,7 @@ function revertChange(key){
 }
 function changesHTML(){
   if(locked()||!baseOf()) return `<h2>Changes</h2><p class="sub">Change sets compare an improvement plan with the current course.</p>
-    <div class="empty">${locked()?"<b>Current course</b> is the read-only record of the course today.":"This layout has nothing to compare against."} Open a proposal tab at the top: every tee, basket, grade or note change you make there is listed here with a summary for work estimates.</div>`;
+    <div class="empty">${locked()?"<b>Current course</b> is the read-only record of the course today.":"This layout has nothing to compare against."} Open a proposal or start a draft with <b>New proposal</b>: every tee, basket, grade or note change you make there is listed here with a summary for work estimates.</div>`;
   const ch=diff(); const t=totals(ch);
   if(!ch.length) return `<h2>Changes</h2><p class="sub">${esc(layName(S.layout))} vs ${esc(layName(baseOf()))}</p><div class="empty">No changes yet. Move a tee or basket, or edit an elevation, and it will be listed here.</div>`;
   return `<h2>Changes</h2><p class="sub">${esc(layName(S.layout))} vs ${esc(layName(baseOf()))} · ${ch.length} change${ch.length>1?"s":""}</p>
@@ -698,6 +859,8 @@ function bindPane(){
   const f=findKey(S.sel);
   const on=(id,ev,fn)=>{const el=document.getElementById(id); if(el) el.addEventListener(ev,fn);};
   const ub=document.getElementById("unlockBtn"); if(ub) ub.onclick=()=>setUnlock(true);
+  const cdb=document.getElementById("copyDraftBtn"); if(cdb) cdb.onclick=()=>copyToDraft(S.layout);
+  if(S.tab==="changes"&&PUBLIC&&isDraft()) bindDraftPanel();
   const rb=document.getElementById("relockBtn"); if(rb) rb.onclick=()=>setUnlock(false);
   if(S.tab==="inspect"&&f){
     const upd=(fn,soon,what)=>{const b=clone(f); fn(f); rebuild(); soon?saveSoon(f):save(f); pushHist(S.layout,f.key,b,f,(what||"edit")+" of "+describe(f),soon?"z":null); };
@@ -780,6 +943,60 @@ async function exportPublic(){
   catch(e){ if(e&&e.code!=="declined") toast("The file couldn't be saved. Try again in a moment."); }
 }
 
+// ---------- drafts (public site) ----------
+async function copyToDraft(src){
+  if(!S.db||!S.canWrite||!S.layouts[src]) return; const m=S.layouts[src]; const id="p"+Date.now().toString(36);
+  const meta={name:(m.name||"Plan")+" (my draft)",basedOn:m.basedOn||"current",clearedNotes:!!m.clearedNotes,createdAt:new Date().toISOString(),copiedFrom:src,description:m.description||""};
+  try{
+    await S.db.collection("layouts").doc(id).set(meta); S.layouts[id]={...meta,draft:PUBLIC};
+    for(const f of layoutFeats(src)){ const c={...f,layout:id}; S.feats[docId(id,f.key)]=c; save(c); }
+    switchLayout(id); toast(PUBLIC?"Draft created. It saves in this browser.":"Copy created");
+  }catch(e){ onWriteErr(e); }
+}
+function draftPanelHTML(){
+  const L=S.layouts[S.layout]||{};
+  return `<section class="draftbox" aria-label="Share your draft"><h2>Share your draft</h2>
+  <p class="sub">Your draft is saved in this browser only. Share it with the course team so it can be discussed.</p>
+  <div class="field"><label class="lbl" for="d-name">Draft name</label><input id="d-name" type="text" value="${esc(L.name||"")}"></div>
+  <div class="field"><label class="lbl" for="d-author">Your name (optional)</label><input id="d-author" type="text" value="${esc(L.author||"")}" placeholder="So the team knows who suggested it"></div>
+  <div class="field"><label class="lbl" for="d-desc">What does this plan change, and why?</label><textarea id="d-desc" placeholder="A sentence or two for the discussion">${esc(L.description||"")}</textarea></div>
+  <div class="inline"><button class="btn primary" type="button" id="d-link">Copy share link</button><button class="btn" type="button" id="d-file">Download file</button><button class="btn" type="button" id="d-gh">Submit on GitHub</button></div>
+  <div id="d-out" aria-live="polite"></div>
+  <p class="sub" style="margin:10px 0 0">No GitHub account? Send the link or the file to the course team. Opening the link shows your draft on the map. <b>Submit on GitHub</b> needs a free GitHub account and opens a pull request for review.</p>
+  </section>`;
+}
+let metaTimer=null;
+function saveMetaSoon(){ const id=S.layout; clearTimeout(metaTimer); metaTimer=setTimeout(async()=>{ const m={...S.layouts[id]}; delete m.draft; try{ await S.db.collection("layouts").doc(id).set(m); }catch(e){ onWriteErr(e); } },500); }
+function bindDraftPanel(){
+  const L=S.layouts[S.layout]; const out=$("#d-out"); const P=window.__PUBLIC;
+  const field=(id,key)=>{ const el=document.getElementById(id); if(el) el.addEventListener("input",()=>{ L[key]=el.value; if(key==="name") renderLayoutSel(); saveMetaSoon(); }); };
+  field("d-name","name"); field("d-author","author"); field("d-desc","description");
+  const copyBox=(label,val,help)=>{ out.innerHTML=`<div class="field" style="margin-top:10px"><label class="lbl" for="d-copy">${label}</label><div class="stepper"><input id="d-copy" type="text" readonly value="${esc(val)}"><button class="btn" type="button" id="d-copybtn">Copy</button></div>${help?`<p class="sub" style="margin:6px 0 0">${help}</p>`:""}</div>`;
+    const inp=$("#d-copy"); $("#d-copybtn").onclick=()=>{ navigator.clipboard.writeText(val).then(()=>toast("Copied")).catch(()=>{ inp.select(); toast("Press Ctrl+C or ⌘C to copy"); }); }; inp.onfocus=()=>inp.select(); };
+  $("#d-link").onclick=async()=>{ try{ const url=await P.shareUrl(S.layout);
+      navigator.clipboard.writeText(url).then(()=>toast("Share link copied")).catch(()=>{});
+      copyBox("Share link",url,url.length>8000?"This link is long, so some email or chat apps may cut it off. If it doesn't open, send the file instead.":"Anyone who opens this link sees your draft and gets their own copy to edit.");
+    }catch(e){ out.innerHTML=`<p class="readonly-note">The link couldn't be made in this browser. Use Download file instead.</p>`; } };
+  $("#d-file").onclick=()=>{ P.download(S.layout); toast("Downloading the draft file"); };
+  $("#d-gh").onclick=()=>{ const g=P.github(S.layout);
+    navigator.clipboard.writeText(g.text).catch(()=>{});
+    window.open(g.url,"_blank","noopener");
+    out.innerHTML=`<ol class="ghsteps"><li>GitHub opened in a new tab, with the file name <code>${esc(g.path)}</code> filled in. Sign in if it asks.</li>
+      <li>${g.prefilled?"The draft is already in the editor.":"Click in the editor and paste (Ctrl+V or ⌘V). The draft was copied for you."}</li>
+      <li>Click <b>Commit changes…</b>, then <b>Propose changes</b> or <b>Create pull request</b>. Add a sentence about the plan.</li></ol>
+      <p class="sub">If the paste didn't work, use the copy box below.</p>`;
+    const keep=out.innerHTML; copyBox("Draft contents",g.text,""); out.insertAdjacentHTML("afterbegin",keep);
+    const b=$("#d-copybtn"); if(b) b.onclick=()=>{ navigator.clipboard.writeText(g.text).then(()=>toast("Copied")).catch(()=>{ $("#d-copy").select(); toast("Press Ctrl+C or ⌘C to copy"); }); };
+  };
+}
+function setupDraftFiles(){
+  const btn=$("#openDraftBtn"), inp=$("#openDraftFile"); if(!PUBLIC||!btn) return; btn.hidden=false;
+  btn.onclick=()=>inp.click();
+  inp.onchange=async()=>{ const f=inp.files[0]; inp.value=""; if(!f) return;
+    try{ const id=window.__PUBLIC.importText(await f.text()); if(!id) throw 0; window.__PUBLIC_OPEN=id; toast("Opened "+f.name); }
+    catch(e){ toast("That file isn't a Brockway draft. Choose a file made with Download file."); } };
+}
+
 // ---------- layouts ----------
 function visibleLayouts(){
   let ids=Object.keys(S.layouts); if(S.layouts.current) ids=ids.filter(i=>i!=="baseline");
@@ -788,16 +1005,16 @@ function visibleLayouts(){
 }
 function renderLayoutSel(){
   const nav=$("#layTabs");
-  nav.innerHTML=visibleLayouts().map(id=>`<button type="button" data-lay="${esc(id)}" aria-current="${id===S.layout}">${esc(S.layouts[id].name||id)}${S.layouts[id].locked?`<span class="ro">${locked(id)?"Read-only":"Editing"}</span>`:""}</button>`).join("");
+  nav.innerHTML=visibleLayouts().map(id=>`<button type="button" data-lay="${esc(id)}" aria-current="${id===S.layout}">${esc(S.layouts[id].name||id)}${S.layouts[id].locked?`<span class="ro">${locked(id)?"Read-only":"Editing"}</span>`:S.layouts[id].published?`<span class="ro">Published</span>`:S.layouts[id].draft?`<span class="ro">Draft</span>`:""}</button>`).join("");
   nav.querySelectorAll("button").forEach(b=>b.onclick=()=>switchLayout(b.dataset.lay));
   $("#newPropBtn").disabled=!(S.canWrite&&S.db);
   $("#delPropBtn").hidden=!deletable(); $("#delPropBtn").disabled=!(S.canWrite&&S.db);
-  document.querySelectorAll("#modeGrp button").forEach(b=>{ if(b.dataset.mode!=="select") b.hidden=locked(); });
-  if(locked()&&S.mode!=="select") setMode("select");
-  $("#hint").textContent = locked() ? "Read-only snapshot. Drag to orbit · scroll to zoom · click an item to read its notes." : (S.mode==="select"?"Drag to orbit · scroll to zoom · right-drag to pan. Click an item to read its notes.":$("#hint").textContent);
+  document.querySelectorAll("#modeGrp button").forEach(b=>{ if(b.dataset.mode!=="select") b.hidden=!editable(); });
+  if(!editable()&&S.mode!=="select") setMode("select");
+  $("#hint").textContent = !editable() ? (isPublished()?"Published plan.":"Read-only snapshot.")+" Drag to orbit · scroll to zoom · click an item to read its notes." : (S.mode==="select"?"Drag to orbit · scroll to zoom · right-drag to pan. In a draft, drag a tee or basket to move it.":$("#hint").textContent);
 }
 const PROTECTED=["current","improvements","baseline"];
-function deletable(l){ l=l||S.layout; return !!S.layouts[l]&&!lockable(l)&&!PROTECTED.includes(l); }
+function deletable(l){ l=l||S.layout; return !!S.layouts[l]&&!lockable(l)&&!isPublished(l)&&!PROTECTED.includes(l); }
 $("#delPropBtn").addEventListener("click",()=>{
   const hdr=document.querySelector(".hdr-ctl"); if(hdr.querySelector("#delConfirm")||!deletable()) return;
   const id=S.layout, name=layName(id), n=layoutFeats(id).length;
@@ -831,7 +1048,7 @@ $("#newPropBtn").addEventListener("click",()=>{
     try{
       const meta={name,basedOn:from,clearedNotes:true,createdAt:new Date().toISOString()};
       await S.db.collection("layouts").doc(id).set(meta);
-      S.layouts[id]=meta; S.layout=id; try{localStorage.setItem("bw-layout",id)}catch(x){}
+      S.layouts[id]={...meta,draft:PUBLIC}; S.layout=id; try{localStorage.setItem("bw-layout",id)}catch(x){}
       for(const f of src){ const c={...f,layout:id,note:""}; delete c.noteAt; S.feats[docId(id,f.key)]=c; save(c); }
       renderLayoutSel(); rebuild(); setTab("changes"); toast(`Created ${name}. Edits now go to the proposal.`);
     }catch(e){ onWriteErr(e); }
@@ -839,7 +1056,7 @@ $("#newPropBtn").addEventListener("click",()=>{
 });
 
 // ---------- boot ----------
-resize(); themeBg(); renderLayoutSel(); syncUndoBtns(); renderPane(); setMode("select"); buildTerrain(); frame("pers");
+resize(); themeBg(); renderLayoutSel(); syncUndoBtns(); setupDraftFiles(); renderPane(); setMode("select"); buildTerrain(); frame("pers");
 const st=$("#status");
 function setStatus(t,bad){st.textContent=t;st.classList.toggle("bad",!!bad);}
 (async()=>{
@@ -868,6 +1085,7 @@ function setStatus(t,bad){st.textContent=t;st.classList.toggle("bad",!!bad);}
     const L={}; snap.docs.forEach(d=>{ const v=d.data(); if(v) L[d.id]={...v}; }); if(snap.docs.length) S.layouts=L;
     const vis=visibleLayouts();
     if(!vis.includes(S.layout)){ S.layout=(window.__PUBLIC_DEFAULT&&vis.includes(window.__PUBLIC_DEFAULT))?window.__PUBLIC_DEFAULT:(vis.includes("improvements")?"improvements":(vis[0]||"baseline")); S.sel=null; rebuild(); renderPane(); }
+    if(window.__PUBLIC_OPEN&&S.layouts[window.__PUBLIC_OPEN]){ const oid=window.__PUBLIC_OPEN; window.__PUBLIC_OPEN=null; S.layout=oid; try{localStorage.setItem("bw-layout",oid)}catch(x){} S.sel=null; rebuild(); requestAnimationFrame(()=>frame("pers")); }
     renderLayoutSel(); syncUndoBtns(); const ae=document.activeElement; if(!(ae&&ae.closest&&ae.closest(".pane")&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName))) renderPane();
   },()=>{});
   db.collection("settings").doc("ground").onSnapshot(d=>{ if(d.exists){ S.ground={...d.data()}; applyGround(); if(S.tab==="site"&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest(".pane"))) renderPane(); } },()=>{});
